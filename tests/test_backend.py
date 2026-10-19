@@ -11,6 +11,8 @@ from app.search import filter_by_period
 from app.registry import SourceRegistry
 from app.settings import Settings
 from app.xlsx import build_workbook
+from app.jobs import JobManager
+from app.main import jobs as app_jobs
 
 
 def test_registry_loads_and_resolves_table_source():
@@ -168,5 +170,86 @@ def test_health_and_source_catalog_endpoints():
             assert len(catalog.json()["sources"]) == 268
 
     asyncio.run(check_endpoints())
+
+
+def test_job_history_persists_and_is_scoped_to_session(tmp_path):
+    async def check_persistence():
+        database = tmp_path / "jobs.sqlite3"
+        manager = JobManager(database)
+        payload = {
+            "text": "Запрос для истории",
+            "days": 7,
+            "keywords": ["история"],
+            "sources": [{}],
+            "source_states": [{"status": "queued"}],
+        }
+        job_id = await manager.create(payload, owner_id="browser-session-a")
+        await manager.mutate(
+            job_id,
+            lambda job: job.update(status="completed", processed_sources=1),
+        )
+
+        restored = JobManager(database)
+        own_job = await restored.snapshot(job_id, "browser-session-a")
+        other_job = await restored.snapshot(job_id, "browser-session-b")
+        history = await restored.history("browser-session-a")
+
+        assert own_job["status"] == "completed"
+        assert other_job is None
+        assert len(history) == 1
+        assert history[0]["job_id"] == job_id
+
+    asyncio.run(check_persistence())
+
+
+def test_history_endpoint_sets_http_only_session_cookie():
+    async def check_cookie():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/history")
+            assert response.status_code == 200
+            assert response.json() == {"jobs": []}
+            cookie = response.headers["set-cookie"].casefold()
+            assert "media_session=" in cookie
+            assert "httponly" in cookie
+            assert "samesite=lax" in cookie
+            assert client.cookies.get("media_session")
+
+    asyncio.run(check_cookie())
+
+
+def test_browser_can_reopen_and_export_its_saved_job():
+    async def check_saved_job():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.get("/history")
+            session_id = client.cookies.get("media_session")
+            job_id = await app_jobs.create(
+                {
+                    "text": "Прошлый запрос",
+                    "days": 3,
+                    "keywords": ["прошлый"],
+                    "sources": [],
+                    "source_states": [],
+                },
+                owner_id=session_id,
+            )
+            await app_jobs.mutate(
+                job_id,
+                lambda job: job.update(status="completed"),
+            )
+
+            history = await client.get("/history")
+            details = await client.get(f"/jobs/{job_id}")
+            export = await client.get(f"/jobs/{job_id}/export.xlsx")
+
+            assert history.json()["jobs"][0]["job_id"] == job_id
+            assert details.json()["query"] == "Прошлый запрос"
+            assert export.status_code == 200
+
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as other:
+            assert (await other.get(f"/jobs/{job_id}")).status_code == 404
+
+    asyncio.run(check_saved_job())
 
 

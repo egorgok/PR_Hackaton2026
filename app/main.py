@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+import secrets
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from app.models import SearchRequest
 from app.registry import SourceRegistry
@@ -12,8 +14,26 @@ from app.jobs import JobManager
 
 settings = Settings.from_env()
 registry = SourceRegistry(settings.sources_file)
-jobs = JobManager()
+jobs = JobManager(settings.jobs_db_file)
 search_service = SearchService(registry, jobs, settings)
+SESSION_COOKIE = "media_session"
+
+
+def get_or_create_session(request: Request, response: Response) -> str:
+    session_id = request.cookies.get(SESSION_COOKIE)
+    if session_id:
+        return session_id
+    session_id = secrets.token_urlsafe(32)
+    response.set_cookie(
+        key=SESSION_COOKIE,
+        value=session_id,
+        max_age=settings.cookie_max_age_seconds,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        path="/",
+    )
+    return session_id
 
 
 @asynccontextmanager
@@ -28,6 +48,13 @@ app = FastAPI(
     description="Поиск публикаций в публичных источниках Красноярского края.",
     lifespan=lifespan,
 )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(settings.cors_origins),
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept"],
+)
 
 
 @app.get("/health")
@@ -41,32 +68,49 @@ async def list_sources() -> dict[str, object]:
 
 
 @app.post("/jobs", status_code=202)
-async def create_job(request: SearchRequest) -> dict[str, object]:
-    selected = registry.resolve_selection(request.platform, request.editor)
+async def create_job(
+    payload: SearchRequest,
+    request: Request,
+    response: Response,
+) -> dict[str, object]:
+    selected = registry.resolve_selection(payload.platform, payload.editor)
     if not selected:
         raise HTTPException(
             status_code=422,
             detail="Для выбранных редакций и площадок не найдено URL в реестре источников.",
         )
-    return await search_service.start(request, selected)
+    session_id = get_or_create_session(request, response)
+    return await search_service.start(payload, selected, session_id)
 
 
 @app.get("/jobs/{job_id}")
-async def get_job(job_id: str) -> dict[str, object]:
-    job = await jobs.snapshot(job_id)
+async def get_job(job_id: str, request: Request) -> dict[str, object]:
+    session_id = request.cookies.get(SESSION_COOKIE)
+    if not session_id:
+        raise HTTPException(status_code=404, detail="Задание не найдено.")
+    job = await jobs.snapshot(job_id, session_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Задание не найдено.")
     return job
 
 
 @app.get("/jobs/{job_id}/export.xlsx")
-async def export_job(job_id: str) -> StreamingResponse:
-    job = await jobs.snapshot(job_id)
+async def export_job(job_id: str, request: Request) -> Response:
+    session_id = request.cookies.get(SESSION_COOKIE)
+    if not session_id:
+        raise HTTPException(status_code=404, detail="Задание не найдено.")
+    job = await jobs.snapshot(job_id, session_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Задание не найдено.")
-    content = build_workbook(job)
-    return StreamingResponse(
-        content,
+    content = build_workbook(job).getvalue()
+    return Response(
+        content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="media-search-{job_id}.xlsx"'},
     )
+
+
+@app.get("/history")
+async def get_history(request: Request, response: Response) -> dict[str, object]:
+    session_id = get_or_create_session(request, response)
+    return {"jobs": await jobs.history(session_id)}

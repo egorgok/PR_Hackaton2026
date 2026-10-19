@@ -2,13 +2,21 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / ".env")
 
 
 @dataclass(frozen=True)
 class Settings:
     sources_file: Path
+    jobs_db_file: Path
+    cookie_secure: bool
+    cookie_samesite: str
+    cookie_max_age_seconds: int
+    cors_origins: tuple[str, ...]
     max_concurrent_sources: int
     max_candidates_per_source: int
     source_timeout_seconds: float
@@ -19,10 +27,30 @@ class Settings:
     gigachat_api_base_url: str
     gigachat_timeout_seconds: float
 
+    def __post_init__(self) -> None:
+        if self.cookie_samesite not in {"lax", "strict", "none"}:
+            raise ValueError("COOKIE_SAMESITE должен быть lax, strict или none.")
+        if self.cookie_samesite == "none" and not self.cookie_secure:
+            raise ValueError("COOKIE_SAMESITE=none требует COOKIE_SECURE=true.")
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
             sources_file=Path(os.getenv("SOURCES_FILE", ROOT / "sources.xlsx")),
+            jobs_db_file=Path(os.getenv("JOBS_DB_FILE", ROOT / "data" / "jobs.sqlite3")),
+            cookie_secure=os.getenv("COOKIE_SECURE", "false").casefold() == "true",
+            cookie_samesite=os.getenv("COOKIE_SAMESITE", "lax").casefold(),
+            cookie_max_age_seconds=max(
+                3600, int(os.getenv("COOKIE_MAX_AGE_SECONDS", str(365 * 24 * 60 * 60)))
+            ),
+            cors_origins=tuple(
+                origin.strip()
+                for origin in os.getenv(
+                    "CORS_ORIGINS",
+                    "http://localhost:5173,http://127.0.0.1:5173",
+                ).split(",")
+                if origin.strip()
+            ),
             max_concurrent_sources=max(1, int(os.getenv("MAX_CONCURRENT_SOURCES", "8"))),
             max_candidates_per_source=max(1, int(os.getenv("MAX_CANDIDATES_PER_SOURCE", "40"))),
             source_timeout_seconds=max(3.0, float(os.getenv("SOURCE_TIMEOUT_SECONDS", "18"))),

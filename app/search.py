@@ -42,7 +42,12 @@ class SearchService:
         self.settings = settings
         self.gigachat = GigaChat(settings)
 
-    async def start(self, request: SearchRequest, selected: list[Source | dict[str, str]]):
+    async def start(
+        self,
+        request: SearchRequest,
+        selected: list[Source | dict[str, str]],
+        owner_id: str,
+    ):
         keywords = extract_keywords(request.text)
         source_states = [
             {
@@ -65,7 +70,8 @@ class SearchService:
                 "keywords": keywords,
                 "sources": selected,
                 "source_states": source_states,
-            }
+            },
+            owner_id,
         )
         self.jobs.spawn(self._run(job_id, request, selected, keywords))
         return {"job_id": job_id, "status": "queued", "status_url": f"/jobs/{job_id}"}
