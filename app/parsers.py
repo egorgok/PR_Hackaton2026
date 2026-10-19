@@ -20,6 +20,17 @@ USER_AGENT = (
 )
 CAPTCHA_MARKERS = ("captcha", "verify you are human", "robot check", "проверка что вы не робот")
 DATE_RE = re.compile(r"\b20\d{2}-\d{2}-\d{2}(?:[t ][0-9:.+\-z]+)?\b", re.I)
+RU_DATE_RE = re.compile(
+    r"\b(?P<day>[0-3]?\d)\s+(?P<month>января|февраля|марта|апреля|мая|июня|июля|августа|"
+    r"сентября|октября|ноября|декабря)(?:\s+(?P<year>20\d{2}))?"
+    r"(?:[,\s]+(?P<hour>[0-2]?\d):(?P<minute>[0-5]\d))?",
+    re.I,
+)
+RU_MONTHS = {
+    "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
+    "мая": 5, "июня": 6, "июля": 7, "августа": 8,
+    "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
+}
 SKIP_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".pdf", ".mp4", ".zip", ".svg")
 NON_ARTICLE_SEGMENTS = {
     "about", "authors", "category", "contacts", "feed", "page", "search",
@@ -57,11 +68,26 @@ def _date(value: str | None) -> datetime | None:
         except (TypeError, ValueError, OverflowError):
             match = DATE_RE.search(value)
             if not match:
-                return None
-            try:
-                parsed = datetime.fromisoformat(match.group().replace("z", "+00:00"))
-            except ValueError:
-                return None
+                ru_match = RU_DATE_RE.search(value.casefold())
+                if not ru_match:
+                    return None
+                year_text = ru_match.group("year")
+                year = int(year_text or datetime.now(timezone.utc).year)
+                parsed = datetime(
+                    year,
+                    RU_MONTHS[ru_match.group("month")],
+                    int(ru_match.group("day")),
+                    int(ru_match.group("hour") or 0),
+                    int(ru_match.group("minute") or 0),
+                    tzinfo=timezone.utc,
+                )
+                if not year_text and parsed > datetime.now(timezone.utc):
+                    parsed = parsed.replace(year=parsed.year - 1)
+            else:
+                try:
+                    parsed = datetime.fromisoformat(match.group().replace("z", "+00:00"))
+                except ValueError:
+                    return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
@@ -86,12 +112,19 @@ def _article_date(soup: BeautifulSoup) -> datetime | None:
     for selector, attribute in (
         ("meta[property='article:published_time']", "content"),
         ("meta[name='date']", "content"),
+        ("meta[name='pubdate']", "content"),
+        ("meta[name='publish_date']", "content"),
         ("meta[itemprop='datePublished']", "content"),
         ("time[datetime]", "datetime"),
     ):
         node = soup.select_one(selector)
         if node:
             value = _date(node.get(attribute))
+            if value:
+                return value
+    for selector in ("time", "[class*='date']", "[class*='published']", "[class*='datetime']"):
+        for node in soup.select(selector)[:20]:
+            value = _date(node.get_text(" ", strip=True))
             if value:
                 return value
     for node in soup.select("script[type='application/ld+json']"):
@@ -125,7 +158,10 @@ def _extract_posts(soup: BeautifulSoup, base_url: str, platform: Platform) -> li
         Platform.ok: "[data-post-id], .feed",
         Platform.max: "article, [class*='post'], [class*='message']",
         Platform.zen: "article, [class*='article'], [class*='feed']",
-        Platform.website: "article, [itemtype*='Article']",
+        Platform.website: (
+            "article, [itemtype*='Article'], "
+            "[class*='news-item'], [class*='post-item'], [class*='article-item']"
+        ),
     }
     for node in soup.select(selectors[platform])[:100]:
         text = _text(node)
@@ -141,14 +177,7 @@ def _extract_posts(soup: BeautifulSoup, base_url: str, platform: Platform) -> li
             url = base_url
         title_node = node.select_one("h1, h2, h3, [class*='title']")
         title = title_node.get_text(" ", strip=True) if title_node else text[:160]
-        published = _date(
-            (node.select_one("time[datetime]") or {}).get("datetime")
-            if node.select_one("time[datetime]")
-            else None
-        )
-        if not published:
-            time_node = node.select_one("time")
-            published = _date(time_node.get_text(" ", strip=True)) if time_node else None
+        published = _article_date(node)
         candidates.append(Candidate(title, _canonical(url), text[:6000], published))
     return candidates
 
@@ -191,6 +220,23 @@ def _feed_url(soup: BeautifulSoup, page_url: str) -> str | None:
         if href:
             return urljoin(page_url, href)
     return None
+
+
+async def _try_common_feeds(
+    client: httpx.AsyncClient, page_url: str
+) -> list[Candidate]:
+    base = f"{urlparse(page_url).scheme}://{urlparse(page_url).netloc}"
+    paths = ("/rss.xml", "/feed", "/feed/", "/rss", "/rss/", "/atom.xml")
+    for path in paths:
+        feed_url = urljoin(base, path)
+        try:
+            final_url, feed_html = await _fetch(client, feed_url)
+        except (httpx.HTTPError, SourceBlocked, CaptchaDetected):
+            continue
+        candidates = _parse_feed(feed_html, final_url)
+        if candidates:
+            return candidates
+    return []
 
 
 def _parse_feed(xml_text: str, feed_url: str) -> list[Candidate]:
@@ -246,7 +292,12 @@ def _is_article_page(soup: BeautifulSoup, url: str, text: str) -> bool:
         "meta[itemprop='datePublished'], [itemprop='articleBody']"
     ):
         return True
-    if soup.select_one("article, [itemtype*='Article'], [itemtype*='NewsArticle']"):
+    if soup.select_one(
+        "article, [itemtype*='Article'], [itemtype*='NewsArticle'], "
+        "[class*='article-body'], [class*='article-text'], "
+        "[class*='news-detail'], [class*='news-body'], [class*='post-content'], "
+        "[class*='entry-content']"
+    ):
         return True
     og_type = soup.select_one("meta[property='og:type']")
     if og_type and og_type.get("content", "").casefold() == "article":
@@ -270,7 +321,14 @@ def _is_article_page(soup: BeautifulSoup, url: str, text: str) -> bool:
                 for value in types
             ):
                 return True
-    return False
+    # Many regional CMS pages omit schema.org markup. A substantial main block
+    # with a heading is still a publication unless the URL is clearly an archive.
+    return bool(
+        soup.select_one(
+            "main h1, main h2, .content h1, .article h1, "
+            "[class*='news-detail'] h1, [class*='article'] h1"
+        )
+    ) and len(text) >= 300
 
 
 async def parse_source(source: Source, timeout: float, max_candidates: int) -> list[Candidate]:
@@ -289,7 +347,7 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
         final_url, html = await _fetch(client, start_url)
         soup = BeautifulSoup(html, "html.parser")
         direct_posts = _extract_posts(soup, final_url, source.platform)
-        if source.platform != Platform.website and direct_posts:
+        if direct_posts:
             return _dedupe(direct_posts)[:max_candidates]
 
         article_links: list[str] = []
@@ -303,6 +361,9 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
                     article_links.extend(item.url for item in feed_candidates)
                 except (httpx.HTTPError, SourceBlocked):
                     pass
+            if not feed_candidates:
+                feed_candidates = await _try_common_feeds(client, final_url)
+                article_links.extend(item.url for item in feed_candidates)
         for anchor in soup.select("a[href]"):
             link = urljoin(final_url, anchor.get("href", ""))
             parsed = urlparse(link)
@@ -348,6 +409,11 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
                 article.select_one("article")
                 or article.select_one("[itemprop='articleBody']")
                 or article.select_one("main")
+                or article.select_one(
+                    "[class*='article-body'], [class*='article-text'], "
+                    "[class*='news-detail'], [class*='news-body'], "
+                    "[class*='post-content'], [class*='entry-content']"
+                )
             )
             if content_node is None:
                 return None
@@ -363,12 +429,12 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
         candidates = [item for item in fetched if isinstance(item, Candidate)]
         fetched_urls = {item.url for item in candidates}
         candidates.extend(item for item in feed_candidates if item.url not in fetched_urls)
-        if not candidates and direct_posts and source.platform != Platform.website:
+        if not candidates and direct_posts:
             candidates = direct_posts
         if not candidates:
-            raise SourceUnreadable(
-                "Страница открылась, но публикации не удалось извлечь из доступной HTML-разметки."
-            )
+            # The page was reachable and was not blocked. It is a valid empty
+            # result, not an unavailable source.
+            return []
         return _dedupe(candidates)[:max_candidates]
 
 

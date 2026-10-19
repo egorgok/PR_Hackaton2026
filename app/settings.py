@@ -21,6 +21,7 @@ class Settings:
     max_candidates_per_source: int
     source_timeout_seconds: float
     gigachat_auth_key: str | None
+    gigachat_ca_bundle_file: Path | None
     gigachat_scope: str
     gigachat_model: str
     gigachat_auth_url: str
@@ -55,6 +56,15 @@ class Settings:
             max_candidates_per_source=max(1, int(os.getenv("MAX_CANDIDATES_PER_SOURCE", "40"))),
             source_timeout_seconds=max(3.0, float(os.getenv("SOURCE_TIMEOUT_SECONDS", "18"))),
             gigachat_auth_key=os.getenv("GIGACHAT_AUTH_KEY") or None,
+            gigachat_ca_bundle_file=(
+                Path(os.getenv("GIGACHAT_CA_BUNDLE_FILE"))
+                if os.getenv("GIGACHAT_CA_BUNDLE_FILE")
+                else (
+                    ROOT / "certs" / "russian_trusted_root_ca_pem.crt"
+                    if (ROOT / "certs" / "russian_trusted_root_ca_pem.crt").is_file()
+                    else None
+                )
+            ),
             gigachat_scope=os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS"),
             gigachat_model=os.getenv("GIGACHAT_MODEL", "GigaChat"),
             gigachat_auth_url=os.getenv(

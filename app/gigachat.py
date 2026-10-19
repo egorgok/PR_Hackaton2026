@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import time
 import uuid
 
@@ -30,7 +31,10 @@ class GigaChat:
             "Верни только JSON вида {\"relevant_ids\":[\"id\"]}. "
             f"Запрос: {query[:2000]}\nПубликации: {json.dumps(prompt_data, ensure_ascii=False)}"
         )
-        async with httpx.AsyncClient(timeout=self.settings.gigachat_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=self.settings.gigachat_timeout_seconds,
+            verify=self._verify,
+        ) as client:
             response = await client.post(
                 f"{self.settings.gigachat_api_base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
@@ -42,11 +46,36 @@ class GigaChat:
             )
             response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
-        start, end = content.find("{"), content.rfind("}")
-        if start < 0 or end <= start:
-            raise ValueError("GigaChat вернул ответ без JSON relevant_ids.")
-        result = json.loads(content[start : end + 1])
-        return {str(value) for value in result.get("relevant_ids", [])}
+        try:
+            result = self._parse_classification(content)
+        except ValueError:
+            # A malformed model answer must not disable the whole search.
+            # The caller switches to lexical fallback for this job.
+            raise ValueError(
+                f"GigaChat вернул неподдерживаемый формат классификации: {content[:300]!r}"
+            )
+        return {str(value) for value in result}
+
+    @staticmethod
+    def _parse_classification(content: str) -> list[str]:
+        cleaned = content.strip().replace("```json", "").replace("```", "").strip()
+        candidates = [cleaned]
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start >= 0 and end > start:
+            candidates.append(cleaned[start : end + 1])
+        for candidate in candidates:
+            try:
+                payload = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                values = payload.get("relevant_ids", [])
+                if isinstance(values, list):
+                    return [str(value) for value in values]
+        match = re.search(r"relevant_ids\s*[:=]\s*\[([^\]]*)\]", cleaned, re.I)
+        if match:
+            return re.findall(r"['\"]([^'\"]+)['\"]", match.group(1))
+        raise ValueError("classification JSON was not found")
 
     async def _access_token(self) -> str:
         if self._token and self._token_expires_at > time.time() + 30:
@@ -55,7 +84,10 @@ class GigaChat:
             if self._token and self._token_expires_at > time.time() + 30:
                 return self._token
             request_id = str(uuid.uuid4())
-            async with httpx.AsyncClient(timeout=self.settings.gigachat_timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                timeout=self.settings.gigachat_timeout_seconds,
+                verify=self._verify,
+            ) as client:
                 response = await client.post(
                     self.settings.gigachat_auth_url,
                     headers={
@@ -71,3 +103,15 @@ class GigaChat:
             expires_at = float(body.get("expires_at", time.time() + 1800))
             self._token_expires_at = expires_at / 1000 if expires_at > 10**12 else expires_at
             return self._token
+
+    @property
+    def _verify(self) -> str | bool:
+        ca_bundle = self.settings.gigachat_ca_bundle_file
+        if ca_bundle is None:
+            return True
+        if not ca_bundle.is_file():
+            raise FileNotFoundError(
+                f"CA-сертификат GigaChat не найден: {ca_bundle}. "
+                "Укажите путь к PEM-файлу НУЦ Минцифры в GIGACHAT_CA_BUNDLE_FILE."
+            )
+        return str(ca_bundle)

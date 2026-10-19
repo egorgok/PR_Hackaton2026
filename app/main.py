@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from app.models import SearchRequest
+from app.models import FullSearchRequest, SearchRequest
 from app.registry import SourceRegistry
 from app.search import SearchService
 from app.settings import Settings
@@ -81,6 +81,31 @@ async def create_job(
         )
     session_id = get_or_create_session(request, response)
     return await search_service.start(payload, selected, session_id)
+
+
+@app.post("/jobs/all", status_code=202)
+async def create_full_job(
+    payload: FullSearchRequest,
+    request: Request,
+    response: Response,
+) -> dict[str, object]:
+    selected = registry.all_sources(payload.platform)
+    if not selected:
+        raise HTTPException(
+            status_code=422,
+            detail="В реестре нет источников на выбранных площадках.",
+        )
+    session_id = get_or_create_session(request, response)
+    search_payload = SearchRequest(
+        text=payload.text,
+        platform=payload.platform,
+        editor=list(dict.fromkeys(source.editor for source in selected)),
+        days=payload.days,
+    )
+    result = await search_service.start(search_payload, selected, session_id)
+    result["scope"] = "all_registry_sources"
+    result["selected_sources"] = len(selected)
+    return result
 
 
 @app.get("/jobs/{job_id}")

@@ -41,6 +41,7 @@ class SearchService:
         self.jobs = jobs
         self.settings = settings
         self.gigachat = GigaChat(settings)
+        self._gigachat_unavailable = False
 
     async def start(
         self,
@@ -70,6 +71,7 @@ class SearchService:
                 "keywords": keywords,
                 "sources": selected,
                 "source_states": source_states,
+                "ai_mode": "gigachat_pending" if self.gigachat.enabled else "lexical_only",
             },
             owner_id,
         )
@@ -139,7 +141,7 @@ class SearchService:
                 for candidate in candidates
                 if lexical_match(candidate.title + " " + candidate.text, keywords)
             ]
-            if self.gigachat.enabled:
+            if self.gigachat.enabled and not self._gigachat_unavailable:
                 to_classify = candidates[: self.settings.max_candidates_per_source]
                 try:
                     async with ai_semaphore:
@@ -153,6 +155,7 @@ class SearchService:
                                 for index, candidate in enumerate(to_classify)
                             ],
                         )
+                    await self.jobs.mutate(job_id, lambda job: job.update(ai_mode="gigachat"))
                     relevant = [
                         (candidate, "gigachat")
                         for index, candidate in enumerate(to_classify)
@@ -160,11 +163,23 @@ class SearchService:
                     ]
                 except Exception as exc:
                     relevant = lexical
+                    # Do not wait for the same unreachable API once per source.
+                    # The lexical fallback remains available for the rest of the job.
+                    self._gigachat_unavailable = True
+                    if isinstance(exc, httpx.HTTPStatusError):
+                        error_detail = f"HTTP {exc.response.status_code}"
+                    elif isinstance(exc, httpx.HTTPError):
+                        error_detail = f"{type(exc).__name__}: {exc}"
+                    else:
+                        error_detail = type(exc).__name__
                     await self.jobs.mutate(
                         job_id,
-                        lambda job: job["errors"].append(
-                            f"{source.editor}/{source.platform.value}: GigaChat недоступен "
-                            f"({type(exc).__name__}); применен лексический отбор."
+                        lambda job: (
+                            job.update(ai_mode="lexical_fallback", ai_error=error_detail),
+                            job["errors"].append(
+                                f"GigaChat недоступен ({error_detail}); "
+                                "для задания включен лексический отбор."
+                            ),
                         ),
                     )
             else:

@@ -94,6 +94,8 @@ class JobManager:
             "processed_sources": 0,
             "count": 0,
             "excluded_undated_count": 0,
+            "ai_mode": payload.get("ai_mode", "lexical"),
+            "ai_error": None,
             "results": [],
             "sources": payload["source_states"],
             "errors": [],
@@ -167,6 +169,8 @@ class JobManager:
                 "processed_sources": job["processed_sources"],
                 "count": job["count"],
                 "excluded_undated_count": job["excluded_undated_count"],
+                "ai_mode": job.get("ai_mode", "unknown"),
+                "ai_error": job.get("ai_error"),
                 "status_url": f"/jobs/{job['job_id']}",
                 "export_url": f"/jobs/{job['job_id']}/export.xlsx",
             }

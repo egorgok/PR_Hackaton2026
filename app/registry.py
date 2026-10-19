@@ -67,6 +67,14 @@ class SourceRegistry:
             for item in self._items
         ]
 
+    def all_sources(self, platforms: list[Platform]) -> list[Source]:
+        selected_platforms = set(platforms)
+        return [
+            item
+            for item in self._items
+            if item.platform in selected_platforms
+        ]
+
     def resolve_selection(
         self, platforms: list[Platform], editors: list[str]
     ) -> list[Source | dict[str, str]]:

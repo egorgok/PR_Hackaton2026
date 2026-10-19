@@ -39,6 +39,26 @@ class SearchRequest(BaseModel):
         return value
 
 
+class FullSearchRequest(BaseModel):
+    text: str = Field(min_length=3, max_length=10_000)
+    platform: list[Platform] = Field(
+        default_factory=lambda: list(Platform), min_length=1, max_length=20
+    )
+    days: int = Field(default=7, ge=1, le=30)
+
+    @field_validator("platform")
+    @classmethod
+    def unique_platforms(cls, values: list[Platform]) -> list[Platform]:
+        return list(dict.fromkeys(values))
+
+    @field_validator("days")
+    @classmethod
+    def supported_period(cls, value: int) -> int:
+        if value not in {1, 3, 7, 14, 30}:
+            raise ValueError("Период должен быть одним из значений: 1, 3, 7, 14 или 30 дней.")
+        return value
+
+
 class Publication(BaseModel):
     editor: str
     platform: Platform

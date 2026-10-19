@@ -1,18 +1,28 @@
 import asyncio
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 import httpx
 from openpyxl import load_workbook
 
 from app.keywords import extract_keywords, lexical_match
 from app.main import app
 from app.models import Platform, SearchRequest
-from app.parsers import Candidate, _article_date, _canonical, _is_article_page, _parse_feed
+from app.parsers import (
+    Candidate,
+    _article_date,
+    _canonical,
+    _date,
+    _extract_posts,
+    _is_article_page,
+    _parse_feed,
+)
 from app.search import filter_by_period
 from app.registry import SourceRegistry
 from app.settings import Settings
 from app.xlsx import build_workbook
 from app.jobs import JobManager
-from app.main import jobs as app_jobs
+from app.gigachat import GigaChat
+from app.main import jobs as app_jobs, search_service
 
 
 def test_registry_loads_and_resolves_table_source():
@@ -34,6 +44,13 @@ def test_registry_marks_missing_platform_without_inventing_url():
             "message": "Для редакции нет адреса на выбранной площадке.",
         }
     ]
+
+
+def test_registry_can_select_every_registered_source():
+    registry = SourceRegistry(Settings.from_env().sources_file)
+    selected = registry.all_sources(list(Platform))
+    assert len(selected) == 268
+    assert len({source.editor for source in selected}) == 48
 
 
 def test_search_contract_validates_supported_periods():
@@ -83,6 +100,31 @@ def test_article_date_reads_published_metadata():
         "html.parser",
     )
     assert _article_date(soup) == datetime(2026, 10, 19, 12, tzinfo=timezone.utc)
+    assert _date("19 октября 2026, 14:30") == datetime(
+        2026, 10, 19, 14, 30, tzinfo=timezone.utc
+    )
+
+
+def test_gigachat_classification_parser_accepts_json_variants():
+    assert GigaChat._parse_classification('{"relevant_ids":["1","3"]}') == ["1", "3"]
+    assert GigaChat._parse_classification("```json\n{\"relevant_ids\": [\"2\"]}\n```") == ["2"]
+    assert GigaChat._parse_classification("Ответ: relevant_ids: [\"4\"]") == ["4"]
+
+
+def test_markup_parser_extracts_semantic_news_cards_with_russian_date():
+    from bs4 import BeautifulSoup
+    from app.models import Platform
+
+    soup = BeautifulSoup(
+        "<main><div class='news-item'><a href='/news/42'>Пожар в школе</a>"
+        "<time>19 октября 2026, 14:30</time><p>Подробный текст публикации "
+        "для проверки разметки источника.</p></div></main>",
+        "html.parser",
+    )
+    items = _extract_posts(soup, "https://news.example/", Platform.website)
+    assert len(items) == 1
+    assert items[0].url == "https://news.example/news/42"
+    assert items[0].published_at == datetime(2026, 10, 19, 14, 30, tzinfo=timezone.utc)
 
 def test_archive_page_is_not_a_publication_but_article_metadata_is():
     from bs4 import BeautifulSoup
@@ -170,6 +212,28 @@ def test_health_and_source_catalog_endpoints():
             assert len(catalog.json()["sources"]) == 268
 
     asyncio.run(check_endpoints())
+
+
+def test_full_job_uses_all_registry_sources_without_running_network(monkeypatch):
+    async def check_full_job():
+        monkeypatch.setattr(
+            search_service,
+            "start",
+            AsyncMock(return_value={"job_id": "full-test", "status": "queued"}),
+        )
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/jobs/all",
+                json={"text": "Проверка всего реестра", "days": 1},
+            )
+            assert response.status_code == 202
+            body = response.json()
+            assert body["scope"] == "all_registry_sources"
+            assert body["selected_sources"] == 268
+            assert search_service.start.await_args.args[1].__len__() == 268
+
+    asyncio.run(check_full_job())
 
 
 def test_job_history_persists_and_is_scoped_to_session(tmp_path):

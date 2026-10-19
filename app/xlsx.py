@@ -60,6 +60,8 @@ def build_workbook(job: dict) -> BytesIO:
     meta.append(["Ключевые слова", ", ".join(job["keywords"])])
     meta.append(["Количество публикаций", job["count"]])
     meta.append(["Исключено: неизвестная дата", job.get("excluded_undated_count", 0)])
+    meta.append(["Режим ИИ", job.get("ai_mode", "unknown")])
+    meta.append(["Ошибка ИИ", job.get("ai_error") or "нет"])
     meta.append(["Статус", job["status"]])
     meta.append(["Задание", job["job_id"]])
     meta.column_dimensions["A"].width = 28
