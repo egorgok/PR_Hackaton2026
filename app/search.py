@@ -1,0 +1,225 @@
+import asyncio
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import httpx
+
+from app.gigachat import GigaChat
+from app.jobs import JobManager
+from app.keywords import extract_keywords, lexical_match
+from app.models import Platform, Publication, SearchRequest
+from app.parsers import (
+    Candidate,
+    CaptchaDetected,
+    SourceBlocked,
+    SourceUnreadable,
+    parse_source,
+)
+from app.registry import Source, SourceRegistry
+from app.settings import Settings
+
+
+def filter_by_period(
+    candidates: list[Candidate],
+    days: int,
+    now: datetime | None = None,
+) -> tuple[list[Candidate], int]:
+    current_time = now or datetime.now(timezone.utc)
+    cutoff = current_time - timedelta(days=days)
+    undated = sum(candidate.published_at is None for candidate in candidates)
+    matching = [
+        candidate
+        for candidate in candidates
+        if candidate.published_at is not None and cutoff <= candidate.published_at <= current_time
+    ]
+    return matching, undated
+
+
+class SearchService:
+    def __init__(self, registry: SourceRegistry, jobs: JobManager, settings: Settings):
+        self.registry = registry
+        self.jobs = jobs
+        self.settings = settings
+        self.gigachat = GigaChat(settings)
+
+    async def start(self, request: SearchRequest, selected: list[Source | dict[str, str]]):
+        keywords = extract_keywords(request.text)
+        source_states = [
+            {
+                "editor": source.editor if isinstance(source, Source) else source["editor"],
+                "platform": source.platform.value
+                if isinstance(source, Source)
+                else source["platform"],
+                "url": source.url if isinstance(source, Source) else source["url"],
+                "status": "queued" if isinstance(source, Source) else "unavailable",
+                "message": None if isinstance(source, Source) else source["message"],
+                "found": 0,
+                "undated": 0,
+            }
+            for source in selected
+        ]
+        job_id = await self.jobs.create(
+            {
+                "text": request.text,
+                "days": request.days,
+                "keywords": keywords,
+                "sources": selected,
+                "source_states": source_states,
+            }
+        )
+        self.jobs.spawn(self._run(job_id, request, selected, keywords))
+        return {"job_id": job_id, "status": "queued", "status_url": f"/jobs/{job_id}"}
+
+    async def _run(self, job_id: str, request: SearchRequest, selected, keywords: list[str]):
+        await self.jobs.mutate(job_id, lambda job: job.update(status="running"))
+        semaphore = asyncio.Semaphore(self.settings.max_concurrent_sources)
+        ai_semaphore = asyncio.Semaphore(3)
+
+        async def handle(index: int, source_or_error):
+            if isinstance(source_or_error, dict):
+                await self.jobs.mutate(
+                    job_id,
+                    lambda job: job["sources"][index].update(
+                        status="unavailable", message=source_or_error["message"]
+                    ),
+                )
+                await self.jobs.mutate(
+                    job_id, lambda job: job.update(processed_sources=job["processed_sources"] + 1)
+                )
+                return
+            source: Source = source_or_error
+            await self.jobs.mutate(
+                job_id, lambda job: job["sources"][index].update(status="processing")
+            )
+            async with semaphore:
+                try:
+                    candidates = await asyncio.wait_for(
+                        parse_source(
+                            source,
+                            self.settings.source_timeout_seconds,
+                            self.settings.max_candidates_per_source,
+                        ),
+                        timeout=self.settings.source_timeout_seconds + 2,
+                    )
+                except CaptchaDetected as exc:
+                    await self._source_error(job_id, index, "unavailable", f"Недоступно: CAPTCHA ({exc})")
+                    return
+                except SourceBlocked as exc:
+                    await self._source_error(job_id, index, "unavailable", f"Недоступно: {exc}")
+                    return
+                except SourceUnreadable as exc:
+                    await self._source_error(job_id, index, "unavailable", str(exc))
+                    return
+                except asyncio.TimeoutError:
+                    await self._source_error(job_id, index, "timeout", "Превышено время ожидания источника.")
+                    return
+                except httpx.TimeoutException:
+                    await self._source_error(
+                        job_id, index, "timeout", "Превышено время ожидания источника."
+                    )
+                    return
+                except Exception as exc:
+                    await self._source_error(job_id, index, "error", f"Ошибка получения: {type(exc).__name__}")
+                    return
+
+            candidates, undated_count = filter_by_period(candidates, request.days)
+            if not candidates:
+                await self._source_done(job_id, index, 0, undated=undated_count)
+                return
+
+            relevant: list[tuple[Candidate, str]] = []
+            lexical = [
+                (candidate, "lexical")
+                for candidate in candidates
+                if lexical_match(candidate.title + " " + candidate.text, keywords)
+            ]
+            if self.gigachat.enabled:
+                to_classify = candidates[: self.settings.max_candidates_per_source]
+                try:
+                    async with ai_semaphore:
+                        accepted = await self.gigachat.classify(
+                            request.text,
+                            [
+                                {
+                                    "id": str(index),
+                                    "text": candidate.title + "\n" + candidate.text[:2500],
+                                }
+                                for index, candidate in enumerate(to_classify)
+                            ],
+                        )
+                    relevant = [
+                        (candidate, "gigachat")
+                        for index, candidate in enumerate(to_classify)
+                        if str(index) in accepted
+                    ]
+                except Exception as exc:
+                    relevant = lexical
+                    await self.jobs.mutate(
+                        job_id,
+                        lambda job: job["errors"].append(
+                            f"{source.editor}/{source.platform.value}: GigaChat недоступен "
+                            f"({type(exc).__name__}); применен лексический отбор."
+                        ),
+                    )
+            else:
+                relevant = lexical
+
+            publications = [
+                Publication(
+                    editor=source.editor,
+                    platform=source.platform,
+                    source_name=source.host,
+                    title=candidate.title or candidate.text[:160],
+                    url=candidate.url,
+                    excerpt=candidate.text[:450],
+                    published_at=candidate.published_at,
+                    date_status="within_period" if candidate.published_at else "unknown",
+                    relevance="Смысловое совпадение" if method == "gigachat" else "Совпадение ключевых слов",
+                    match_method=method,
+                ).model_dump(mode="json")
+                for candidate, method in relevant
+            ]
+            await self.jobs.add_results(job_id, publications)
+            await self._source_done(job_id, index, len(publications), undated=undated_count)
+
+        await asyncio.gather(*(handle(index, source) for index, source in enumerate(selected)))
+
+        def finish(job: dict[str, Any]):
+            statuses = [source["status"] for source in job["sources"]]
+            if all(status in ("completed", "no_results") for status in statuses):
+                job["status"] = "completed"
+            elif any(status in ("completed", "no_results") for status in statuses):
+                job["status"] = "completed_with_errors"
+            else:
+                job["status"] = "failed"
+
+        await self.jobs.mutate(job_id, finish)
+
+    async def _source_error(self, job_id: str, index: int, status: str, message: str):
+        def update(job: dict[str, Any]):
+            job["sources"][index].update(status=status, message=message)
+            job["processed_sources"] += 1
+            job["errors"].append(message)
+
+        await self.jobs.mutate(job_id, update)
+
+    async def _source_done(self, job_id: str, index: int, found: int, undated: int = 0):
+        def update(job: dict[str, Any]):
+            job["sources"][index].update(
+                status="completed" if found else "no_results",
+                found=found,
+                undated=undated,
+                message=(
+                    None
+                    if found
+                    else (
+                        "Материалы с неизвестной датой исключены: попадание в период не подтверждено."
+                        if undated
+                        else "Подходящие публикации не найдены."
+                    )
+                ),
+            )
+            job["processed_sources"] += 1
+            job["excluded_undated_count"] += undated
+
+        await self.jobs.mutate(job_id, update)
