@@ -933,12 +933,6 @@ export default function App() {
     return `${Math.round(hours / 24)} дн`;
   }, [visibleSources]);
 
-  const statsConfidencePct = useMemo(() => {
-    if (visibleSources.length === 0) return 0;
-    const avgMatch = visibleSources.reduce((sum, s) => sum + s.match, 0) / visibleSources.length;
-    return Math.round(avgMatch);
-  }, [visibleSources]);
-
   const showFeatured = platformFilter === "all" && editorialFilter === "all" && period === "all";
   const showEmptyState = visibleSources.length === 0 && !showFeatured;
 
@@ -1241,18 +1235,6 @@ export default function App() {
                     <p className="text-lg font-extrabold tracking-[-0.04em]">{statsSpan}</p>
                     <p className="mt-0.5 text-[9px] leading-3 text-white/50">охват</p>
                   </div>
-                </div>
-                <div className="mt-3 border-t border-white/10 pt-2.5">
-                  <div className="mb-1 flex justify-between text-[9px] font-bold text-white/55">
-                    <span>Уверенность ИИ в достоверности</span>
-                    <span>{statsConfidencePct}%</span>
-                  </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-[#ef4755] transition-all duration-500" style={{ width: `${statsConfidencePct}%` }} />
-                  </div>
-                  <p className="mt-2 text-[9px] leading-3 text-white/40">
-                    Оценка основана на совпадении фактов в публикациях разных изданий
-                  </p>
                 </div>
               </aside>
             </div>
