@@ -31,6 +31,7 @@ class Settings:
     ai_model: str
     ai_base_url: str
     ai_timeout_seconds: float
+    vk_token: str | None
 
     def __post_init__(self) -> None:
         if self.cookie_samesite not in {"lax", "strict", "none"}:
@@ -84,4 +85,5 @@ class Settings:
             ai_model=os.getenv("AI_MODEL", "gpt-6.1-sol"),
             ai_base_url=os.getenv("AI_BASE_URL", "https://darkapi.shop/v1").rstrip("/"),
             ai_timeout_seconds=max(3.0, float(os.getenv("AI_TIMEOUT_SECONDS", "22"))),
+            vk_token=os.getenv("VK_TOKEN") or None,
         )
