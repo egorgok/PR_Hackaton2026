@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 
 from app.gigachat import GigaChat
+from app.ai_client import YandexGPTClient
 from app.jobs import JobManager
 from app.keywords import extract_keywords, lexical_match
 from app.models import Platform, Publication, SearchRequest
@@ -41,6 +42,12 @@ class SearchService:
         self.jobs = jobs
         self.settings = settings
         self.gigachat = GigaChat(settings)
+        self.yandexgpt = YandexGPTClient(
+            settings.yandexgpt_api_key,
+            settings.yandexgpt_base_url,
+            settings.yandexgpt_model_uri,
+            settings.yandexgpt_timeout_seconds,
+        )
         self._gigachat_unavailable = False
 
     async def start(
@@ -50,6 +57,12 @@ class SearchService:
         owner_id: str,
     ):
         keywords = extract_keywords(request.text)
+        if self.yandexgpt.enabled and self.yandexgpt.model:
+            try:
+                expanded = await self.yandexgpt.expand_query(request.text)
+                keywords = list(dict.fromkeys(keywords + extract_keywords(" ".join(expanded))))
+            except Exception:
+                pass
         source_states = [
             {
                 "editor": source.editor if isinstance(source, Source) else source["editor"],
@@ -71,7 +84,11 @@ class SearchService:
                 "keywords": keywords,
                 "sources": selected,
                 "source_states": source_states,
-                "ai_mode": "gigachat_pending" if self.gigachat.enabled else "lexical_only",
+                "ai_mode": (
+                    "yandexgpt_pending" if self.yandexgpt.enabled
+                    else "gigachat_pending" if self.gigachat.enabled
+                    else "lexical_only"
+                ),
             },
             owner_id,
         )
@@ -135,13 +152,47 @@ class SearchService:
                 await self._source_done(job_id, index, 0, undated=undated_count)
                 return
 
-            relevant: list[tuple[Candidate, str]] = []
+            relevant: list[tuple[Candidate, str, object | None]] = []
             lexical = [
                 (candidate, "lexical")
                 for candidate in candidates
                 if lexical_match(candidate.title + " " + candidate.text, keywords)
             ]
-            if self.gigachat.enabled and not self._gigachat_unavailable:
+            if self.yandexgpt.enabled and self.yandexgpt.model:
+                preselected = [
+                    candidate for candidate, _ in lexical
+                ][: self.settings.max_candidates_per_source]
+                try:
+                    async with ai_semaphore:
+                        decisions = await self.yandexgpt.classify_detailed(
+                            request.text,
+                            [
+                                {"id": str(candidate_index),
+                                 "text": candidate.title + "\n" + candidate.text[:2500]}
+                                for candidate_index, candidate in enumerate(preselected)
+                            ],
+                        )
+                    decision_by_id = {decision.id: decision for decision in decisions}
+                    relevant = [
+                        (candidate, "yandexgpt", decision_by_id[str(candidate_index)])
+                        for candidate_index, candidate in enumerate(preselected)
+                        if str(candidate_index) in decision_by_id
+                        and decision_by_id[str(candidate_index)].relevant
+                    ]
+                    await self.jobs.mutate(job_id, lambda job: job.update(ai_mode="yandexgpt"))
+                except Exception as exc:
+                    relevant = [(candidate, "lexical", None) for candidate, _ in lexical]
+                    await self.jobs.mutate(
+                        job_id,
+                        lambda job: (
+                            job.update(ai_mode="lexical_fallback", ai_error=type(exc).__name__),
+                            job["errors"].append(
+                                f"YandexGPT недоступен ({type(exc).__name__}); "
+                                "для задания включен лексический отбор."
+                            ),
+                        ),
+                    )
+            elif self.gigachat.enabled and not self._gigachat_unavailable:
                 to_classify = candidates[: self.settings.max_candidates_per_source]
                 try:
                     async with ai_semaphore:
@@ -157,12 +208,12 @@ class SearchService:
                         )
                     await self.jobs.mutate(job_id, lambda job: job.update(ai_mode="gigachat"))
                     relevant = [
-                        (candidate, "gigachat")
+                        (candidate, "gigachat", None)
                         for index, candidate in enumerate(to_classify)
                         if str(index) in accepted
                     ]
                 except Exception as exc:
-                    relevant = lexical
+                    relevant = [(candidate, "lexical", None) for candidate, _ in lexical]
                     # Do not wait for the same unreachable API once per source.
                     # The lexical fallback remains available for the rest of the job.
                     self._gigachat_unavailable = True
@@ -183,7 +234,7 @@ class SearchService:
                         ),
                     )
             else:
-                relevant = lexical
+                relevant = [(candidate, "lexical", None) for candidate, _ in lexical]
 
             publications = [
                 Publication(
@@ -195,10 +246,14 @@ class SearchService:
                     excerpt=candidate.text[:450],
                     published_at=candidate.published_at,
                     date_status="within_period" if candidate.published_at else "unknown",
-                    relevance="Смысловое совпадение" if method == "gigachat" else "Совпадение ключевых слов",
+                    relevance=(
+                        "Смысловое совпадение"
+                        if method in {"gigachat", "yandexgpt"}
+                        else "Совпадение ключевых слов"
+                    ),
                     match_method=method,
                 ).model_dump(mode="json")
-                for candidate, method in relevant
+                for candidate, method, decision in relevant
             ]
             await self.jobs.add_results(job_id, publications)
             await self._source_done(job_id, index, len(publications), undated=undated_count)

@@ -22,6 +22,9 @@ def build_workbook(job: dict) -> BytesIO:
             "Выдержка",
             "Связь с запросом",
             "Способ отбора",
+            "Уверенность ИИ",
+            "Причина проверки",
+            "Совпавшие понятия",
         ]
     )
     for cell in sheet[1]:
@@ -43,11 +46,14 @@ def build_workbook(job: dict) -> BytesIO:
                 result["excerpt"],
                 result["relevance"],
                 result["match_method"],
+                result.get("relevance_score"),
+                result.get("relevance_reason"),
+                ", ".join(result.get("matched_concepts", [])),
             ]
         )
         sheet.cell(row, 8).hyperlink = result["url"]
         sheet.cell(row, 8).style = "Hyperlink"
-    widths = [8, 26, 16, 24, 48, 22, 18, 56, 72, 28, 20]
+    widths = [8, 26, 16, 24, 48, 22, 18, 56, 72, 28, 20, 16, 60, 36]
     for index, width in enumerate(widths, 1):
         sheet.column_dimensions[get_column_letter(index)].width = width
     sheet.freeze_panes = "A2"

@@ -27,6 +27,10 @@ class Settings:
     gigachat_auth_url: str
     gigachat_api_base_url: str
     gigachat_timeout_seconds: float
+    yandexgpt_api_key: str | None
+    yandexgpt_model_uri: str
+    yandexgpt_base_url: str
+    yandexgpt_timeout_seconds: float
 
     def __post_init__(self) -> None:
         if self.cookie_samesite not in {"lax", "strict", "none"}:
@@ -76,4 +80,10 @@ class Settings:
                 "https://gigachat.devices.sberbank.ru/api/v1",
             ).rstrip("/"),
             gigachat_timeout_seconds=max(3.0, float(os.getenv("GIGACHAT_TIMEOUT_SECONDS", "22"))),
+            yandexgpt_api_key=os.getenv("YANDEXGPT_API_KEY") or None,
+            yandexgpt_model_uri=os.getenv("YANDEXGPT_MODEL_URI", ""),
+            yandexgpt_base_url=os.getenv(
+                "YANDEXGPT_BASE_URL", "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+            ).rstrip("/"),
+            yandexgpt_timeout_seconds=max(3.0, float(os.getenv("YANDEXGPT_TIMEOUT_SECONDS", "22"))),
         )

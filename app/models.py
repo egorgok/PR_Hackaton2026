@@ -70,6 +70,9 @@ class Publication(BaseModel):
     date_status: str
     relevance: str
     match_method: str
+    relevance_score: float | None = None
+    relevance_reason: str | None = None
+    matched_concepts: list[str] = Field(default_factory=list)
 
 
 class SourceState(BaseModel):
