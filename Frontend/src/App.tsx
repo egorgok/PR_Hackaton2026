@@ -346,6 +346,14 @@ type ApiJob = {
   job_id: string;
   status: string;
   results: ApiPublication[];
+  sources: Array<{
+    editor: string;
+    platform: string;
+    url: string;
+    status: string;
+    message: string | null;
+    found: number;
+  }>;
   processed_sources: number;
   total_sources: number;
 };
@@ -354,6 +362,7 @@ const PLATFORM_ALIASES: Record<string, string> = {
   site: "website",
   tg: "telegram",
 };
+const UNAVAILABLE_STATUSES = new Set(["unavailable", "error", "timeout"]);
 
 function apiPlatform(platform: string) {
   return PLATFORM_ALIASES[platform] ?? platform;
@@ -402,6 +411,7 @@ export default function App() {
   const [restored, setRestored] = useState(false);
   const [apiSources, setApiSources] = useState<ApiSource[]>([]);
   const [apiJob, setApiJob] = useState<ApiJob | null>(null);
+  const [resultsTab, setResultsTab] = useState<"results" | "unavailable">("results");
   const [apiError, setApiError] = useState("");
   const [searching, setSearching] = useState(false);
   const pollRef = useRef<number | null>(null);
@@ -511,6 +521,7 @@ export default function App() {
           return {
             ...job,
             results: Array.from(resultsByUrl.values()),
+            sources: job.sources?.length ? job.sources : previous.sources,
             processed_sources: Math.max(previous.processed_sources, job.processed_sources),
           };
         });
@@ -667,6 +678,7 @@ export default function App() {
     if (pollRef.current !== null) window.clearTimeout(pollRef.current);
     setApiError("");
     setApiJob(null);
+    setResultsTab("results");
     setSearching(true);
     setSearchedQuery(text);
     setIntro(false);
@@ -895,6 +907,9 @@ export default function App() {
         };
       });
   }, [apiJob, platformFilter, editorialFilter, dateOrder, period, editorialMeta, PLATFORM_META]);
+  const unavailableSources = (apiJob?.sources ?? []).filter((source) =>
+    UNAVAILABLE_STATUSES.has(source.status),
+  );
 
   useEffect(() => {
     setVisibleLimit(10);
@@ -979,7 +994,7 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-[#f4f1ed] text-[#181716]">
-      <div className="relative mx-auto max-w-[1440px] lg:min-h-screen">
+      <div className="relative min-h-screen w-full lg:min-h-screen">
         {/* Левая колонка */}
         <section
           id="how"
@@ -1122,7 +1137,7 @@ export default function App() {
             intro ? "lg:ml-0 lg:opacity-0" : "lg:ml-[38%] lg:opacity-100"
           }`}
         >
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto w-full max-w-5xl">
             <div className="flex flex-col gap-3 border-b border-[#ddd7d1] pb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -1166,6 +1181,23 @@ export default function App() {
                   {editorialItems.map((item) => (<option key={item.id} value={item.name}>{item.name}</option>))}
                 </FilterSelect>
               </div>
+            </div>
+
+            <div className="mt-3 flex gap-5 border-b border-[#ddd7d1]">
+              <button
+                type="button"
+                onClick={() => setResultsTab("results")}
+                className={`border-b-2 px-1 py-2 text-sm font-bold ${resultsTab === "results" ? "border-[#d91f2e] text-[#d91f2e]" : "border-transparent text-[#817a74]"}`}
+              >
+                Результаты ({visibleSources.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setResultsTab("unavailable")}
+                className={`border-b-2 px-1 py-2 text-sm font-bold ${resultsTab === "unavailable" ? "border-[#d91f2e] text-[#d91f2e]" : "border-transparent text-[#817a74]"}`}
+              >
+                Недоступные ({unavailableSources.length})
+              </button>
             </div>
 
             <div className="mt-3 grid gap-3 xl:grid-cols-[1.35fr_1fr]">
@@ -1225,7 +1257,7 @@ export default function App() {
               </aside>
             </div>
 
-            <div className="mt-3 space-y-2">
+            {resultsTab === "results" && <div className="mt-3 space-y-2">
               {displayedSources.map((source) => {
                 const isExpanded = expandedNewsId === source.id;
                 const platformMeta = PLATFORM_META[source.platform] ?? { label: source.platform, color: "#d91f2e" };
@@ -1267,7 +1299,25 @@ export default function App() {
                   <p className="mt-1 text-xs text-[#918983]">Попробуйте выбрать другой период, платформу или редакцию.</p>
                 </div>
               )}
-            </div>
+            </div>}
+
+            {resultsTab === "unavailable" && (
+              <div className="mt-3 space-y-2">
+                {unavailableSources.map((source) => (
+                  <article key={`${source.platform}:${source.editor}`} className="rounded-xl border border-[#e2dcd6] bg-white p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-extrabold">{source.editor}</h3>
+                        <p className="mt-1 text-xs text-[#817a74]">{source.message || source.status}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-bold text-[#d91f2e]">{source.platform}</span>
+                    </div>
+                    <button type="button" className="mt-2 cursor-default text-xs font-bold text-[#817a74]">Повторить</button>
+                  </article>
+                ))}
+                {!unavailableSources.length && <p className="py-8 text-center text-sm text-[#817a74]">Недоступных источников нет</p>}
+              </div>
+            )}
 
             {visibleSources.length > 10 && visibleLimit < visibleSources.length && (
               <button
