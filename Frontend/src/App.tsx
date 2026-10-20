@@ -1312,7 +1312,6 @@ export default function App() {
                       </div>
                       <span className="shrink-0 text-xs font-bold text-[#d91f2e]">{source.platform}</span>
                     </div>
-                    <button type="button" className="mt-2 cursor-default text-xs font-bold text-[#817a74]">Повторить</button>
                   </article>
                 ))}
                 {!unavailableSources.length && <p className="py-8 text-center text-sm text-[#817a74]">Недоступных источников нет</p>}
