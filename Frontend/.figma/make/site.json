@@ -1,0 +1,11 @@
+{
+  "title": "Факт",
+  "description": "Enhance user engagement with a dynamic web experience that generates floating particles around the cursor on hover, perfect for interactive websites.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
