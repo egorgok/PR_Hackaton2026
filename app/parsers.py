@@ -36,6 +36,20 @@ NON_ARTICLE_SEGMENTS = {
     "about", "authors", "category", "contacts", "feed", "page", "search",
     "tag", "tags", "theme", "themes", "topics", "rubric", "rubrics",
 }
+NEWS_SECTION_MARKERS = (
+    "news", "novost", "новост", "article", "articles", "publ", "rubric",
+    "category", "topic", "material", "press",
+)
+COMMON_NEWS_SECTION_PATHS = (
+    "/news/",
+    "/novosti/",
+    "/новости/",
+    "/articles/",
+    "/publ/",
+    "/rubric/",
+    "/category/",
+    "/press/",
+)
 
 
 @dataclass
@@ -364,6 +378,7 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
             if not feed_candidates:
                 feed_candidates = await _try_common_feeds(client, final_url)
                 article_links.extend(item.url for item in feed_candidates)
+        section_links: list[str] = []
         for anchor in soup.select("a[href]"):
             link = urljoin(final_url, anchor.get("href", ""))
             parsed = urlparse(link)
@@ -374,6 +389,10 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
             if source.platform == Platform.website:
                 if len(parsed.path.strip("/").split("/")) < 1:
                     continue
+                anchor_text = anchor.get_text(" ", strip=True).casefold()
+                path = parsed.path.casefold()
+                if any(marker in path or marker in anchor_text for marker in NEWS_SECTION_MARKERS):
+                    section_links.append(_canonical(link))
             elif source.platform == Platform.telegram:
                 if "/s/" not in parsed.path and not re.search(r"/[^/]+/\d+$", parsed.path):
                     continue
@@ -382,7 +401,42 @@ async def parse_source(source: Source, timeout: float, max_candidates: int) -> l
                     continue
             article_links.append(_canonical(link))
 
-        links = list(dict.fromkeys(article_links))[:max_candidates]
+        if source.platform == Platform.website:
+            site_root = f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}"
+            section_links.extend(
+                urljoin(site_root, path) for path in COMMON_NEWS_SECTION_PATHS
+            )
+        if source.platform == Platform.website and section_links:
+            section_urls = list(dict.fromkeys(section_links))[:12]
+
+            async def discover_section_links(section_url: str) -> list[str]:
+                try:
+                    section_final_url, section_html = await _fetch(client, section_url)
+                except (httpx.HTTPError, SourceBlocked, CaptchaDetected):
+                    return []
+                section_soup = BeautifulSoup(section_html, "html.parser")
+                discovered: list[str] = []
+                for anchor in section_soup.select("a[href]"):
+                    link = _canonical(urljoin(section_final_url, anchor.get("href", "")))
+                    parsed = urlparse(link)
+                    if (
+                        parsed.scheme in ("http", "https")
+                        and _same_host(final_url, link)
+                        and not parsed.path.lower().endswith(SKIP_EXTENSIONS)
+                        and link != section_final_url
+                    ):
+                        discovered.append(link)
+                return discovered
+
+            section_results = await asyncio.gather(
+                *(discover_section_links(url) for url in section_urls)
+            )
+            for discovered in section_results:
+                article_links.extend(discovered)
+
+        # A section can expose more links than the per-source result limit.
+        # Fetch a larger candidate pool, then apply date and AI filtering later.
+        links = list(dict.fromkeys(article_links))[: max_candidates * 4]
         semaphore = asyncio.Semaphore(4)
 
         async def fetch_candidate(link: str) -> Candidate | None:
