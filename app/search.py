@@ -123,11 +123,31 @@ class SearchService:
                 ),
             )
 
+        social_totals = {source["index"]: {"count": 0, "undated": 0} for source in social_sources}
+
         async def social_ready(source_data, candidates):
             index = source_data["index"]
             source = selected[index]
-            await self._process_candidates(
-                job_id, request, source, index, candidates, keywords, ai_semaphore
+            count, undated = await self._process_candidates(
+                job_id,
+                request,
+                source,
+                index,
+                candidates,
+                keywords,
+                ai_semaphore,
+                complete_source=False,
+            )
+            social_totals[index]["count"] += count
+            social_totals[index]["undated"] += undated
+
+        async def social_complete(source_data):
+            totals = social_totals[source_data["index"]]
+            await self._source_done(
+                job_id,
+                source_data["index"],
+                totals["count"],
+                undated=totals["undated"],
             )
 
         async def social_error(source_data, exc):
@@ -149,6 +169,7 @@ class SearchService:
                     min(4, self.settings.max_concurrent_sources),
                     social_ready,
                     social_error,
+                    social_complete,
                 )
             )
         else:
@@ -223,12 +244,14 @@ class SearchService:
         await self.jobs.mutate(job_id, finish)
 
     async def _process_candidates(
-        self, job_id, request, source, index, candidates, keywords, ai_semaphore
+        self, job_id, request, source, index, candidates, keywords, ai_semaphore,
+        complete_source=True,
     ):
         candidates, undated_count = filter_by_period(candidates, request.days)
         if not candidates:
-            await self._source_done(job_id, index, 0, undated=undated_count)
-            return
+            if complete_source:
+                await self._source_done(job_id, index, 0, undated=undated_count)
+            return 0, undated_count
 
         relevant: list[tuple[Candidate, str, object | None]] = []
         lexical = [
@@ -333,7 +356,9 @@ class SearchService:
                 for candidate, method, decision in relevant
         ]
         await self.jobs.add_results(job_id, publications)
-        await self._source_done(job_id, index, len(publications), undated=undated_count)
+        if complete_source:
+            await self._source_done(job_id, index, len(publications), undated=undated_count)
+        return len(publications), undated_count
 
     async def _source_error(self, job_id: str, index: int, status: str, message: str):
         def update(job: dict[str, Any]):

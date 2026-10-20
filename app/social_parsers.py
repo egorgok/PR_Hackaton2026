@@ -1,9 +1,10 @@
 import asyncio
+import importlib.util
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib.parse import urlparse
 
-import httpx
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
@@ -14,54 +15,57 @@ def _vk_slug(url: str) -> str:
     return urlparse(url).path.strip("/").split("/")[0]
 
 
-async def fetch_vk(source_url: str, token: str, days: int, limit: int, timeout: float):
+def _load_vk_parser():
+    module_path = Path(__file__).with_name("vk-pars.py")
+    spec = importlib.util.spec_from_file_location("project_vk_parser", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Не удалось загрузить {module_path.name}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+async def fetch_vk(
+    source_url: str,
+    token: str,
+    days: int,
+    limit: int,
+    timeout: float,
+    on_batch=None,
+    batch_size: int = 25,
+):
     if not token:
         raise RuntimeError("VK_TOKEN не настроен")
-    slug = _vk_slug(source_url)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        common = {"access_token": token, "v": "5.199"}
-        group_response = await client.get(
-            "https://api.vk.com/method/groups.getById",
-            params={**common, "group_id": slug},
-        )
-        group_response.raise_for_status()
-        group_payload = group_response.json()
-        if "error" in group_payload:
-            raise RuntimeError(str(group_payload["error"]))
-        groups = group_payload.get("response", {}).get("groups", [])
-        if not groups:
-            groups = group_payload.get("response", [])
-        if not groups:
-            raise RuntimeError("VK API не вернул id сообщества")
-        owner_id = -int(groups[0]["id"])
-        response = await client.get(
-            "https://api.vk.com/method/wall.get",
-            params={
-                **common,
-                "owner_id": owner_id,
-                "count": min(limit, 100),
-                "filter": "owner",
-            },
-        )
-        response.raise_for_status()
-        payload = response.json()
-    if "error" in payload:
-        raise RuntimeError(str(payload["error"]))
+    parser = _load_vk_parser()
+    owner_id = await asyncio.wait_for(
+        parser.get_id(_vk_slug(source_url), token=token, timeout=timeout),
+        timeout=timeout + 1,
+    )
+    posts = await asyncio.wait_for(
+        parser.parse_news(owner_id, token=token, count=min(limit, 100), timeout=timeout),
+        timeout=timeout + 1,
+    )
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    result = []
-    for post in payload.get("response", {}).get("items", []):
-        published = datetime.fromtimestamp(post["date"], tz=timezone.utc)
+    result: list[Candidate] = []
+    batch: list[Candidate] = []
+    for post in posts[:limit]:
+        published = datetime.fromisoformat(post["date"])
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=timezone.utc)
+        published = published.astimezone(timezone.utc)
         text = (post.get("text") or "").strip()
         if text and published >= cutoff:
-            result.append(
-                Candidate(
-                    text.splitlines()[0][:160],
-                    f"https://vk.com/wall{post.get('owner_id')}_{post.get('id')}",
-                    text[:8000],
-                    published,
-                )
-            )
-    return result
+            candidate = Candidate(text.splitlines()[0][:160], post["url"], text[:8000], published)
+            if on_batch:
+                batch.append(candidate)
+                if len(batch) >= batch_size:
+                    await on_batch(list(batch))
+                    batch.clear()
+            else:
+                result.append(candidate)
+    if on_batch and batch:
+        await on_batch(list(batch))
+    return [] if on_batch else result
 
 
 def _parse_ok_date(value: str | None) -> datetime | None:
@@ -137,7 +141,8 @@ async def fetch_ok(browser, source_url: str, days: int, limit: int, timeout: flo
                 break
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         return [
-            item for item in _parse_ok_html(await page.content(), source_url)
+            item
+            for item in _parse_ok_html(await page.content(), source_url)
             if item.published_at and item.published_at >= cutoff
         ][:limit]
     finally:
@@ -145,19 +150,35 @@ async def fetch_ok(browser, source_url: str, days: int, limit: int, timeout: flo
 
 
 async def stream_social_sources(
-    sources, days, limit, timeout, vk_token, concurrency, on_ready, on_error
+    sources,
+    days,
+    limit,
+    timeout,
+    vk_token,
+    concurrency,
+    on_ready,
+    on_error,
+    on_complete=None,
 ):
     semaphore = asyncio.Semaphore(concurrency)
 
     async def one(source, browser=None):
         async with semaphore:
             try:
-                candidates = (
-                    await fetch_vk(source["url"], vk_token or "", days, limit, timeout)
-                    if source["platform"] == "vk"
-                    else await fetch_ok(browser, source["url"], days, limit, timeout)
-                )
-                await on_ready(source, candidates)
+                if source["platform"] == "vk":
+                    candidates = await fetch_vk(
+                        source["url"],
+                        vk_token or "",
+                        days,
+                        limit,
+                        timeout,
+                        on_batch=lambda batch: on_ready(source, batch),
+                    )
+                else:
+                    candidates = await fetch_ok(browser, source["url"], days, limit, timeout)
+                    await on_ready(source, candidates)
+                if on_complete:
+                    await on_complete(source)
             except Exception as exc:
                 await on_error(source, exc)
 

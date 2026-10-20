@@ -23,6 +23,41 @@ from app.xlsx import build_workbook
 from app.jobs import JobManager
 from app.gigachat import GigaChat
 from app.main import jobs as app_jobs, search_service
+import app.social_parsers as social_parsers
+
+
+def test_vk_api_parser_streams_candidates_in_batches(monkeypatch):
+    class Parser:
+        async def get_id(self, slug, **kwargs):
+            assert slug == "tubinka"
+            return -123
+
+        async def parse_news(self, owner_id, **kwargs):
+            assert owner_id == -123
+            return [
+                {
+                    "date": "2026-10-20T10:00:00+00:00",
+                    "text": f"Публикация VK {index}",
+                    "url": f"https://vk.com/wall-123_{index}",
+                }
+                for index in range(30)
+            ]
+
+    monkeypatch.setattr(social_parsers, "_load_vk_parser", lambda: Parser())
+    batches = []
+
+    async def append_batch(batch):
+        batches.append(batch)
+
+    async def collect():
+        return await social_parsers.fetch_vk(
+            "https://vk.com/tubinka", "token", 7, 100, 5, on_batch=append_batch
+        )
+
+    candidates = asyncio.run(collect())
+    assert candidates == []
+    assert [len(batch) for batch in batches] == [25, 5]
+    assert batches[0][0].url == "https://vk.com/wall-123_0"
 
 
 def test_registry_loads_and_resolves_table_source():
