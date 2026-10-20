@@ -502,7 +502,18 @@ export default function App() {
         return response.json() as Promise<ApiJob>;
       })
       .then((job) => {
-        setApiJob(job);
+        setApiJob((previous) => {
+          if (!previous || previous.job_id !== job.job_id) return job;
+          const resultsByUrl = new Map(
+            previous.results.map((item) => [publicationId(item), item]),
+          );
+          job.results.forEach((item) => resultsByUrl.set(publicationId(item), item));
+          return {
+            ...job,
+            results: Array.from(resultsByUrl.values()),
+            processed_sources: Math.max(previous.processed_sources, job.processed_sources),
+          };
+        });
         if (job.status === "queued" || job.status === "running") {
           pollRef.current = window.setTimeout(() => pollJob(jobId), 2000);
         } else {
