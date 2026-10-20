@@ -1,6 +1,7 @@
 README.md
 pyproject.toml
 app/__init__.py
+app/ai_client.py
 app/gigachat.py
 app/jobs.py
 app/keywords.py
