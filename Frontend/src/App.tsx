@@ -34,6 +34,21 @@ function Icon({ children, className = "h-5 w-5" }: IconProps) {
 
 const sources = [
   {
+    id: "tacc",
+    name: "ТАСС",
+    platform: "site",
+    editorial: "ТАСС",
+    url: "https://www.tacc.ru/",
+    badge: "T",
+    badgeClass: "bg-[#127c32]",
+    time: "8 минут назад",
+    ageMinutes: 12,
+    title: "Движение на нескольких улицах в центре Москвы временно ограничат",
+    excerpt:
+      "Изменения связаны с проведением городского мероприятия. Ограничения будут действовать в течение выходных.",
+    match: 90,
+  },
+  {
     id: "rbc",
     name: "РБК",
     platform: "site",
@@ -86,10 +101,34 @@ const examples = [
   "Открылась новая станция метро",
 ];
 
-type SummaryRange = {
-  start: string;
-  end: string;
-};
+// === Период: вместо «С» / «До» по времени ===
+type PeriodKey = "all" | "1d" | "3d" | "7d" | "14d" | "30d";
+
+const PERIOD_OPTIONS: Array<{ key: PeriodKey; label: string; days?: number }> = [
+  { key: "all", label: "За всё время" },
+  { key: "1d", label: "До 1 дня", days: 1 },
+  { key: "3d", label: "До 3 дней", days: 3 },
+  { key: "7d", label: "До 7 дней", days: 7 },
+  { key: "14d", label: "До 14 дней", days: 14 },
+  { key: "30d", label: "До 30 дней", days: 30 },
+];
+
+const PERIOD_LABEL_BY_KEY: Record<PeriodKey, string> = PERIOD_OPTIONS.reduce(
+  (acc, item) => {
+    acc[item.key] = item.label;
+    return acc;
+  },
+  {} as Record<PeriodKey, string>,
+);
+
+const PERIOD_DAYS_BY_KEY: Record<PeriodKey, number | undefined> =
+  PERIOD_OPTIONS.reduce(
+    (acc, item) => {
+      acc[item.key] = item.days;
+      return acc;
+    },
+    {} as Record<PeriodKey, number | undefined>,
+  );
 
 type RawRow = {
   editorial: string;
@@ -397,6 +436,10 @@ function FilterSelect({
   );
 }
 
+const FEDERAL_EDITORIALS = new Set(["ТАСС", "РБК", "Коммерсантъ", "Ведомости"]);
+
+const ALL_SITE_ENTRIES_FLAT = Object.values(siteEntriesByCategory).flat();
+
 export default function App() {
   const [query, setQuery] = useState("В центре Москвы перекроют улицы");
   const [searchedQuery, setSearchedQuery] = useState(query);
@@ -408,10 +451,7 @@ export default function App() {
     "all",
   );
   const [editorialFilter, setEditorialFilter] = useState<string>("all");
-  const [summaryRange, setSummaryRange] = useState<SummaryRange>({
-    start: "09:00",
-    end: "18:00",
-  });
+  const [period, setPeriod] = useState<PeriodKey>("all");
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
 
   const [siteSearch, setSiteSearch] = useState("");
@@ -659,6 +699,7 @@ export default function App() {
   const nothingSelected = totalSelected === 0;
 
   const visibleSources = useMemo(() => {
+    const periodDays = PERIOD_DAYS_BY_KEY[period];
     return sources
       .filter((source) => {
         if (platformFilter !== "all" && source.platform !== platformFilter) {
@@ -670,6 +711,9 @@ export default function App() {
         ) {
           return false;
         }
+        if (periodDays !== undefined) {
+          if (source.ageMinutes > periodDays * 1440) return false;
+        }
         return true;
       })
       .sort((a, b) =>
@@ -677,54 +721,60 @@ export default function App() {
           ? a.ageMinutes - b.ageMinutes
           : b.ageMinutes - a.ageMinutes,
       );
-  }, [platformFilter, editorialFilter, dateOrder]);
+  }, [platformFilter, editorialFilter, dateOrder, period]);
+
+  // === Статистика источников: считается из контекста ===
+
+  const statsEditorialsCount = useMemo(() => {
+    const set = new Set(visibleSources.map((s) => s.editorial));
+    return set.size;
+  }, [visibleSources]);
+
+  const statsPublicationsCount = visibleSources.length;
+
+  const statsSpan = useMemo(() => {
+    if (visibleSources.length === 0) return "—";
+    const ages = visibleSources.map((s) => s.ageMinutes);
+    const min = Math.min(...ages);
+    const max = Math.max(...ages);
+    const diff = max - min;
+    if (diff < 60) return `${diff} мин`;
+    const hours = Math.round(diff / 60);
+    if (hours < 48) return `${hours} ч`;
+    return `${Math.round(hours / 24)} дн`;
+  }, [visibleSources]);
+
+  const statsDistribution = useMemo(() => {
+    if (visibleSources.length === 0) {
+      return { federal: 0, regional: 0, federalPct: 0, regionalPct: 0 };
+    }
+    let federal = 0;
+    visibleSources.forEach((s) => {
+      if (FEDERAL_EDITORIALS.has(s.editorial)) federal += 1;
+    });
+    const regional = visibleSources.length - federal;
+    const federalPct = Math.round((federal / visibleSources.length) * 100);
+    const regionalPct = 100 - federalPct;
+    return { federal, regional, federalPct, regionalPct };
+  }, [visibleSources]);
+
+  const statsActiveChannels = useMemo(() => {
+    const activeEditorials = new Set(visibleSources.map((s) => s.editorial));
+    let active = 0;
+    selectedSiteEntries.forEach((id) => {
+      const entry = ALL_SITE_ENTRIES_FLAT.find((e) => e.id === id);
+      if (entry && activeEditorials.has(entry.editorial)) active += 1;
+    });
+    return active;
+  }, [visibleSources, selectedSiteEntries]);
 
   const showFeatured =
-    platformFilter === "all" && editorialFilter === "all";
+    platformFilter === "all" &&
+    editorialFilter === "all" &&
+    period === "all";
   const showEmptyState = visibleSources.length === 0 && !showFeatured;
 
-  const featuredCard = (
-    <article className="group overflow-hidden rounded-2xl border border-[#e2dcd6] bg-white shadow-[0_10px_35px_rgba(41,31,26,0.07)]">
-      <div className="relative h-44 overflow-hidden sm:h-52">
-        <img
-          src={heroImage}
-          alt="Люди идут по оживлённой городской улице"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-        <span className="absolute right-4 bottom-4 rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#d91f2e] shadow-sm">
-          Совпадение 98%
-        </span>
-      </div>
-      <div className="p-5 sm:p-6">
-        <div className="flex items-center gap-3">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#d91f2e] text-sm font-black text-white">
-            Т
-          </span>
-          <div>
-            <p className="text-sm font-extrabold">ТАСС</p>
-            <p className="text-xs text-[#9a928c]">8 минут назад</p>
-          </div>
-        </div>
-        <h3 className="mt-4 text-xl leading-snug font-extrabold tracking-[-0.025em] sm:text-[22px]">
-          Движение на нескольких улицах в центре Москвы временно ограничат
-        </h3>
-        <p className="mt-3 text-sm leading-6 text-[#716b66]">
-          Изменения связаны с проведением городского мероприятия. Ограничения
-          будут действовать в течение выходных.
-        </p>
-        <a
-          href="#"
-          className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#d91f2e] hover:underline"
-        >
-          Читать в источнике
-          <Icon className="h-4 w-4">
-            <path d="M7 17 17 7M8 7h9v9" />
-          </Icon>
-        </a>
-      </div>
-    </article>
-  );
+  const featuredCard = <article></article>;
 
   const faqItems = [
     {
@@ -843,7 +893,9 @@ export default function App() {
                 htmlFor="news-query"
                 className="mb-3 block text-sm font-bold"
               >
-                Что искать?
+                <p className="text-sm font-extrabold tracking-[0.12em] text-white uppercase">
+                  Что искать?
+                </p>
               </label>
               <div className="rounded-2xl bg-white p-2 shadow-[0_18px_45px_rgba(89,5,13,0.2)]">
                 <textarea
@@ -869,7 +921,7 @@ export default function App() {
               </div>
             </form>
 
-            {/* === Заметный блок «ИСТОЧНИКИ» === */}
+            {/* === Блок «ИСТОЧНИКИ» === */}
             <div className="mt-5">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-sm font-extrabold tracking-[0.12em] text-white uppercase">
@@ -900,6 +952,7 @@ export default function App() {
                 </span>
 
                 <span className="flex shrink-0 items-center gap-2">
+                  <span className="hidden items-center gap-1.5 sm:flex"></span>
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#191716] text-white transition-transform group-hover:translate-x-0.5">
                     <Icon className="h-4 w-4">
                       <path d="m9 18 6-6-6-6" />
@@ -957,114 +1010,84 @@ export default function App() {
                 </h2>
               </div>
 
-              <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <label className="group relative block min-w-0">
-                  <span className="mb-1.5 block text-[11px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">
-                    Начало
-                  </span>
-                  <span className="relative flex items-center rounded-xl border border-[#ddd6d0] bg-white transition-colors group-hover:border-[#c7bdb5]">
-                    <span className="pointer-events-none absolute top-1/2 left-3.5 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md bg-[#f5f1ed] text-[#8e8680]">
-                      <span className="text-[10px] font-extrabold">С</span>
-                    </span>
-                    <input
-                      type="time"
-                      value={summaryRange.start}
-                      onChange={(event) =>
-                        setSummaryRange((range) => ({
-                          ...range,
-                          start: event.target.value,
-                        }))
-                      }
-                      aria-label="Время начала сводки"
-                      className="w-full cursor-pointer appearance-none rounded-xl bg-transparent py-3 pr-2 pl-12 text-sm font-bold text-[#4d4844] outline-none"
-                    />
-                  </span>
-                </label>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {/* Период */}
+                <FilterSelect
+                  label="Период"
+                  icon={
+                    <>
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 2" />
+                    </>
+                  }
+                  value={period}
+                  onChange={(value) => setPeriod(value as PeriodKey)}
+                >
+                  {PERIOD_OPTIONS.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </FilterSelect>
 
-                <label className="group relative block min-w-0">
-                  <span className="mb-1.5 block text-[11px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">
-                    Конец
-                  </span>
-                  <span className="relative flex items-center rounded-xl border border-[#ddd6d0] bg-white transition-colors group-hover:border-[#c7bdb5]">
-                    <span className="pointer-events-none absolute top-1/2 left-3.5 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md bg-[#f5f1ed] text-[#8e8680]">
-                      <span className="text-[10px] font-extrabold">До</span>
-                    </span>
-                    <input
-                      type="time"
-                      value={summaryRange.end}
-                      onChange={(event) =>
-                        setSummaryRange((range) => ({
-                          ...range,
-                          end: event.target.value,
-                        }))
-                      }
-                      aria-label="Время окончания сводки"
-                      className="w-full cursor-pointer appearance-none rounded-xl bg-transparent py-3 pr-2 pl-12 text-sm font-bold text-[#4d4844] outline-none"
-                    />
-                  </span>
-                </label>
+                {/* Сортировка по дате */}
+                <FilterSelect
+                  label="Сортировка по дате"
+                  icon={
+                    <>
+                      <path d="M7 3v3M17 3v3M4 8h16M5 5h14v16H5z" />
+                    </>
+                  }
+                  value={dateOrder}
+                  onChange={(value) =>
+                    setDateOrder(value as "newest" | "oldest")
+                  }
+                >
+                  <option value="newest">Сначала новые</option>
+                  <option value="oldest">Сначала старые</option>
+                </FilterSelect>
 
-                <div className="min-w-0 xl:col-span-2">
-                  <FilterSelect
-                    label="Сортировка по дате"
-                    icon={
-                      <>
-                        <path d="M7 3v3M17 3v3M4 8h16M5 5h14v16H5z" />
-                      </>
-                    }
-                    value={dateOrder}
-                    onChange={(value) =>
-                      setDateOrder(value as "newest" | "oldest")
-                    }
-                  >
-                    <option value="newest">Сначала новые</option>
-                    <option value="oldest">Сначала старые</option>
-                  </FilterSelect>
-                </div>
+                {/* Платформа */}
+                <FilterSelect
+                  label="Платформа"
+                  icon={
+                    <>
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+                    </>
+                  }
+                  value={platformFilter}
+                  onChange={(value) =>
+                    setPlatformFilter(value as SiteCategory | "all")
+                  }
+                >
+                  <option value="all">Все платформы</option>
+                  {SITE_CATEGORIES.map((category) => (
+                    <option key={category.key} value={category.key}>
+                      {category.label}
+                    </option>
+                  ))}
+                </FilterSelect>
 
-                <div className="min-w-0 xl:col-span-2">
-                  <FilterSelect
-                    label="Платформа"
-                    icon={
-                      <>
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
-                      </>
-                    }
-                    value={platformFilter}
-                    onChange={(value) =>
-                      setPlatformFilter(value as SiteCategory | "all")
-                    }
-                  >
-                    <option value="all">Все платформы</option>
-                    {SITE_CATEGORIES.map((category) => (
-                      <option key={category.key} value={category.key}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </div>
-
-                <div className="min-w-0 xl:col-span-2">
-                  <FilterSelect
-                    label="Редакция"
-                    icon={
-                      <>
-                        <path d="M4 5h16v14H4z" />
-                        <path d="M8 9h8M8 13h8M8 17h5" />
-                      </>
-                    }
-                    value={editorialFilter}
-                    onChange={setEditorialFilter}
-                  >
-                    <option value="all">Все редакции</option>
-                    {editorialItems.map((item) => (
-                      <option key={item.id} value={item.name}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </div>
+                {/* Редакция */}
+                <FilterSelect
+                  label="Редакция"
+                  icon={
+                    <>
+                      <path d="M4 5h16v14H4z" />
+                      <path d="M8 9h8M8 13h8M8 17h5" />
+                    </>
+                  }
+                  value={editorialFilter}
+                  onChange={setEditorialFilter}
+                >
+                  <option value="all">Все редакции</option>
+                  {editorialItems.map((item) => (
+                    <option key={item.id} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                </FilterSelect>
               </div>
             </div>
 
@@ -1072,7 +1095,7 @@ export default function App() {
               <div className="flex items-center justify-center">
                 <div className="min-w-0">
                   <p className="text-xs font-bold tracking-[0.08em] text-[#9c948e] uppercase">
-                    Сводка с {summaryRange.start} до {summaryRange.end}
+                    Сводка · {PERIOD_LABEL_BY_KEY[period]}
                   </p>
                   <p className="mt-1 truncate text-sm font-bold text-[#2a2725] sm:text-base">
                     «{searchedQuery}»
@@ -1118,34 +1141,67 @@ export default function App() {
                     <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
                   </Icon>
                 </div>
+
+                <p className="mt-2 text-[10px] font-semibold text-white/40">
+                  {PERIOD_LABEL_BY_KEY[period]}
+                  {platformFilter !== "all" &&
+                    ` · ${
+                      SITE_CATEGORIES.find((c) => c.key === platformFilter)
+                        ?.label
+                    }`}
+                  {editorialFilter !== "all" && ` · ${editorialFilter}`}
+                </p>
+
                 <div className="mt-5 grid grid-cols-3 gap-3">
                   <div>
-                    <p className="text-2xl font-extrabold tracking-[-0.04em]">18</p>
-                    <p className="mt-1 text-[10px] leading-4 text-white/50">источников</p>
+                    <p className="text-2xl font-extrabold tracking-[-0.04em]">
+                      {statsEditorialsCount}
+                    </p>
+                    <p className="mt-1 text-[10px] leading-4 text-white/50">
+                      {statsEditorialsCount === 1 ? "издание" : "изданий"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-2xl font-extrabold tracking-[-0.04em]">42</p>
-                    <p className="mt-1 text-[10px] leading-4 text-white/50">публикации</p>
+                    <p className="text-2xl font-extrabold tracking-[-0.04em]">
+                      {statsPublicationsCount}
+                    </p>
+                    <p className="mt-1 text-[10px] leading-4 text-white/50">
+                      {statsPublicationsCount === 1
+                        ? "публикация"
+                        : "публикации"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-2xl font-extrabold tracking-[-0.04em]">2 ч</p>
-                    <p className="mt-1 text-[10px] leading-4 text-white/50">охват</p>
+                    <p className="text-2xl font-extrabold tracking-[-0.04em]">
+                      {statsSpan}
+                    </p>
+                    <p className="mt-1 text-[10px] leading-4 text-white/50">
+                      охват
+                    </p>
                   </div>
                 </div>
+
                 <div className="mt-5 border-t border-white/10 pt-4">
                   <div className="mb-2 flex justify-between text-[10px] font-bold text-white/55">
                     <span>Федеральные СМИ</span>
-                    <span>72%</span>
+                    <span>{statsDistribution.federalPct}%</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[72%] rounded-full bg-[#ef4755]" />
+                    <div
+                      className="h-full rounded-full bg-[#ef4755] transition-all duration-500"
+                      style={{ width: `${statsDistribution.federalPct}%` }}
+                    />
                   </div>
+
                   <div className="mt-3 mb-2 flex justify-between text-[10px] font-bold text-white/55">
                     <span>Региональные СМИ</span>
-                    <span>28%</span>
+                    <span>{statsDistribution.regionalPct}%</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[28%] rounded-full bg-white/70" />
+                    <div
+                      className="h-full rounded-full bg-white/70 transition-all duration-500"
+                      style={{ width: `${statsDistribution.regionalPct}%` }}
+                    />
                   </div>
                 </div>
               </aside>
@@ -1225,7 +1281,7 @@ export default function App() {
                     По выбранным фильтрам публикаций нет
                   </p>
                   <p className="mt-1 text-xs text-[#918983]">
-                    Попробуйте выбрать другую платформу или редакцию.
+                    Попробуйте выбрать другой период, платформу или редакцию.
                   </p>
                 </div>
               )}
@@ -1279,9 +1335,9 @@ export default function App() {
                   Как работает ФАКТ
                 </h2>
                 <p className="mt-3 max-w-lg text-sm leading-6 text-white/80">
-                  Один запрос — и вы видите, как одну и ту же новость
-                  освещают разные редакции: что общего в фактах, чем
-                  отличаются формулировки и кто написал первым.
+                  Один запрос — и вы видите, как одну и ту же новость освещают
+                  разные редакции: что общего в фактах, чем отличаются
+                  формулировки и кто написал первым.
                 </p>
               </div>
             </div>
