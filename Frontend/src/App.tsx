@@ -7,9 +7,6 @@ import {
   type ReactNode,
 } from "react";
 
-const heroImage =
-  "https://images.unsplash.com/photo-1493794179168-82ca7cb00437?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200";
-
 type IconProps = {
   children: ReactNode;
   className?: string;
@@ -32,12 +29,14 @@ function Icon({ children, className = "h-5 w-5" }: IconProps) {
   );
 }
 
+type SiteCategory = "site" | "tg" | "vk" | "ok" | "dzen" | "max";
+
 const sources = [
   {
-    id: "tacc",
-    name: "ТАСС",
-    platform: "site",
-    editorial: "ТАСС",
+    id: "avangard",
+    name: "Авангард",
+    platform: "tg",
+    editorial: "Авангард",
     url: "https://www.tacc.ru/",
     badge: "T",
     badgeClass: "bg-[#127c32]",
@@ -49,10 +48,10 @@ const sources = [
     match: 90,
   },
   {
-    id: "rbc",
-    name: "РБК",
-    platform: "site",
-    editorial: "РБК",
+    id: "vlasttruda",
+    name: "Власть труда",
+    platform: "dzen",
+    editorial: "Власть труда",
     url: "https://www.rbc.ru/",
     badge: "Р",
     badgeClass: "bg-[#123c32]",
@@ -64,10 +63,10 @@ const sources = [
     match: 96,
   },
   {
-    id: "kommersant",
-    name: "Коммерсантъ",
+    id: "rabochiy",
+    name: "Рабочий",
     platform: "site",
-    editorial: "Коммерсантъ",
+    editorial: "Рабочий",
     url: "https://www.kommersant.ru/",
     badge: "К",
     badgeClass: "bg-[#171717]",
@@ -79,10 +78,10 @@ const sources = [
     match: 91,
   },
   {
-    id: "vedomosti",
-    name: "Ведомости",
-    platform: "site",
-    editorial: "Ведомости",
+    id: "pobeda",
+    name: "Победа",
+    platform: "max",
+    editorial: "Победа",
     url: "https://www.vedomosti.ru/",
     badge: "В",
     badgeClass: "bg-[#e9dac2] text-[#1b1b1b]",
@@ -101,7 +100,6 @@ const examples = [
   "Открылась новая станция метро",
 ];
 
-// === Период: вместо «С» / «До» по времени ===
 type PeriodKey = "all" | "1d" | "3d" | "7d" | "14d" | "30d";
 
 const PERIOD_OPTIONS: Array<{ key: PeriodKey; label: string; days?: number }> = [
@@ -191,8 +189,6 @@ const rawRows: RawRow[] = [
   { editorial: "Эхо Турана", site: "exoturana.ru", tg: "https://t.me/exoturana24", vk: "https://vk.com/public217364898", ok: "https://ok.ru/profile/578365811121", dzen: "https://dzen.ru/id/679338ca67ebbf6b1f42373a", max: "https://max.ru/id2422001817_gos" },
 ];
 
-type SiteCategory = "site" | "tg" | "vk" | "ok" | "dzen" | "max";
-
 const SITE_CATEGORIES: Array<{
   key: SiteCategory;
   label: string;
@@ -200,64 +196,23 @@ const SITE_CATEGORIES: Array<{
   color: string;
   icon: ReactNode;
 }> = [
-  {
-    key: "site",
-    label: "Сайты газет",
-    hint: "Официальные сайты редакций",
-    color: "#d91f2e",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
-      </>
-    ),
-  },
-  {
-    key: "tg",
-    label: "ТГ",
-    hint: "Telegram-каналы",
-    color: "#2aabee",
-    icon: <path d="m21 4-4 16-6-4-4 4v-6L3 10z" />,
-  },
-  {
-    key: "vk",
-    label: "ВК",
-    hint: "Сообщества ВКонтакте",
-    color: "#0077ff",
-    icon: <path d="M4 7h3l2 6 3-6h3l-4 10H8z" />,
-  },
-  {
-    key: "ok",
-    label: "ОК",
-    hint: "Группы Одноклассники",
-    color: "#ee8208",
-    icon: (
-      <>
-        <circle cx="12" cy="9" r="3" />
-        <path d="M6 20c1.5-3 4-4 6-4s4.5 1 6 4" />
-      </>
-    ),
-  },
-  {
-    key: "dzen",
-    label: "Дзен",
-    hint: "Каналы на Дзене",
-    color: "#191919",
-    icon: <path d="M12 3c0 6-3 9-9 9 6 0 9 3 9 9 0-6 3-9 9-9-6 0-9-3-9-9Z" />,
-  },
-  {
-    key: "max",
-    label: "МАХ",
-    hint: "Каналы в МАХ",
-    color: "#7c3aed",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="m8 15 3-6 3 6M9 13h6" />
-      </>
-    ),
-  },
+  { key: "site", label: "Сайты газет", hint: "Официальные сайты редакций", color: "#d91f2e", icon: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>) },
+  { key: "tg", label: "ТГ", hint: "Telegram-каналы", color: "#2aabee", icon: <path d="m21 4-4 16-6-4-4 4v-6L3 10z" /> },
+  { key: "vk", label: "ВК", hint: "Сообщества ВКонтакте", color: "#0077ff", icon: <path d="M4 7h3l2 6 3-6h3l-4 10H8z" /> },
+  { key: "ok", label: "ОК", hint: "Группы Одноклассники", color: "#ee8208", icon: (<><circle cx="12" cy="9" r="3" /><path d="M6 20c1.5-3 4-4 6-4s4.5 1 6 4" /></>) },
+  { key: "dzen", label: "Дзен", hint: "Каналы на Дзене", color: "#191919", icon: <path d="M12 3c0 6-3 9-9 9 6 0 9 3 9 9 0-6 3-9 9-9-6 0-9-3-9-9Z" /> },
+  { key: "max", label: "МАХ", hint: "Каналы в МАХ", color: "#7c3aed", icon: (<><circle cx="12" cy="12" r="9" /><path d="m8 15 3-6 3 6M9 13h6" /></>) },
 ];
+
+// Карта платформы: ключ -> { label, color }
+const PLATFORM_META: Record<SiteCategory, { label: string; color: string }> = {
+  site: { label: "Сайт", color: "#d91f2e" },
+  tg: { label: "ТГ", color: "#2aabee" },
+  vk: { label: "ВК", color: "#0077ff" },
+  ok: { label: "ОК", color: "#ee8208" },
+  dzen: { label: "Дзен", color: "#191919" },
+  max: { label: "МАХ", color: "#7c3aed" },
+};
 
 type SiteEntry = {
   id: string;
@@ -268,45 +223,25 @@ type SiteEntry = {
   editorialMark: string;
 };
 
-const EDITORIAL_COLORS = [
-  "#d91f2e", "#123c32", "#171717", "#9d7b4f", "#31599b", "#c93434",
-  "#fc3f1d", "#4285f4", "#191919", "#e12828", "#0f766e", "#7c3aed",
-];
+const EDITORIAL_COLORS = ["#d91f2e","#123c32","#171717","#9d7b4f","#31599b","#c93434","#fc3f1d","#4285f4","#191919","#e12828","#0f766e","#7c3aed"];
 
 const editorialMeta: Record<string, { color: string; mark: string }> = (() => {
   const map: Record<string, { color: string; mark: string }> = {};
   rawRows.forEach((row, index) => {
-    map[row.editorial] = {
-      color: EDITORIAL_COLORS[index % EDITORIAL_COLORS.length],
-      mark: row.editorial.trim().charAt(0).toUpperCase(),
-    };
+    map[row.editorial] = { color: EDITORIAL_COLORS[index % EDITORIAL_COLORS.length], mark: row.editorial.trim().charAt(0).toUpperCase() };
   });
   return map;
 })();
 
 const siteEntriesByCategory: Record<SiteCategory, SiteEntry[]> = (() => {
-  const result: Record<SiteCategory, SiteEntry[]> = {
-    site: [],
-    tg: [],
-    vk: [],
-    ok: [],
-    dzen: [],
-    max: [],
-  };
+  const result: Record<SiteCategory, SiteEntry[]> = { site: [], tg: [], vk: [], ok: [], dzen: [], max: [] };
   const keys: SiteCategory[] = ["site", "tg", "vk", "ok", "dzen", "max"];
   rawRows.forEach((row) => {
     keys.forEach((key) => {
       const url = row[key];
       if (!url) return;
       const meta = editorialMeta[row.editorial];
-      result[key].push({
-        id: `${key}::${row.editorial}`,
-        category: key,
-        editorial: row.editorial,
-        url,
-        editorialColor: meta?.color ?? "#d91f2e",
-        editorialMark: meta?.mark ?? "?",
-      });
+      result[key].push({ id: `${key}::${row.editorial}`, category: key, editorial: row.editorial, url, editorialColor: meta?.color ?? "#d91f2e", editorialMark: meta?.mark ?? "?" });
     });
   });
   return result;
@@ -323,16 +258,9 @@ const entriesByEditorial: Record<string, SiteEntry[]> = (() => {
   return map;
 })();
 
-const allSiteEntryIds = Object.values(siteEntriesByCategory)
-  .flat()
-  .map((entry) => entry.id);
+const allSiteEntryIds = Object.values(siteEntriesByCategory).flat().map((entry) => entry.id);
 
-type EditorialItem = {
-  id: string;
-  name: string;
-  mark: string;
-  color: string;
-};
+type EditorialItem = { id: string; name: string; mark: string; color: string };
 
 const editorialItems: EditorialItem[] = rawRows.map((row, index) => ({
   id: `editorial-${row.editorial}`,
@@ -350,93 +278,33 @@ function normalize(value: string) {
   return value.toLowerCase().replace(/ё/g, "е").trim();
 }
 
-function QuickSearch({
-  value,
-  onChange,
-  placeholder,
-  count,
-  total,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  placeholder: string;
-  count: number;
-  total: number;
-}) {
+function QuickSearch({ value, onChange, placeholder, count, total }: { value: string; onChange: (next: string) => void; placeholder: string; count: number; total: number }) {
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       <div className="relative">
-        <Icon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8e8680]">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-4-4" />
-        </Icon>
-        <input
-          type="search"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          className="block w-full rounded-xl border border-[#ddd6d0] bg-white py-3 pr-10 pl-9 text-sm font-semibold text-[#2a2725] outline-none transition-colors placeholder:font-medium placeholder:text-[#aaa29c] hover:border-[#c7bdb5] focus:border-[#d91f2e]"
-        />
+        <Icon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8e8680]"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></Icon>
+        <input type="search" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="block w-full rounded-xl border border-[#ddd6d0] bg-white py-2.5 pr-10 pl-9 text-sm font-semibold text-[#2a2725] outline-none transition-colors placeholder:font-medium placeholder:text-[#aaa29c] hover:border-[#c7bdb5] focus:border-[#d91f2e]" />
         {value && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            aria-label="Очистить поиск"
-            className="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-[#8e8680] transition-colors hover:bg-[#f1ece7] hover:text-[#d91f2e]"
-          >
-            <Icon className="h-4 w-4">
-              <path d="m6 6 12 12M18 6 6 18" />
-            </Icon>
-          </button>
+          <button type="button" onClick={() => onChange("")} aria-label="Очистить поиск" className="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-[#8e8680] transition-colors hover:bg-[#f1ece7] hover:text-[#d91f2e]"><Icon className="h-4 w-4"><path d="m6 6 12 12M18 6 6 18" /></Icon></button>
         )}
       </div>
-      {value && (
-        <p className="mt-2 text-[11px] font-semibold text-[#918983]">
-          Найдено: {count} из {total}
-        </p>
-      )}
+      {value && <p className="mt-1.5 text-[11px] font-semibold text-[#918983]">Найдено: {count} из {total}</p>}
     </div>
   );
 }
 
-function FilterSelect({
-  label,
-  icon,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  icon: ReactNode;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
+function FilterSelect({ label, icon, value, onChange, children }: { label: string; icon: ReactNode; value: string; onChange: (value: string) => void; children: ReactNode }) {
   return (
     <label className="group relative block min-w-0">
-      <span className="mb-1.5 block text-[11px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">
-        {label}
-      </span>
+      <span className="mb-1 block text-[10px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">{label}</span>
       <span className="relative flex items-center rounded-xl border border-[#ddd6d0] bg-white transition-colors group-hover:border-[#c7bdb5]">
-        <span className="pointer-events-none absolute top-1/2 left-3.5 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md bg-[#f5f1ed] text-[#8e8680]">
-          <Icon className="h-3.5 w-3.5">{icon}</Icon>
-        </span>
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="w-full cursor-pointer appearance-none rounded-xl bg-transparent py-3 pr-9 pl-12 text-sm font-bold text-[#4d4844] outline-none"
-        >
-          {children}
-        </select>
-        <Icon className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-[#8e8680]">
-          <path d="m7 10 5 5 5-5" />
-        </Icon>
+        <span className="pointer-events-none absolute top-1/2 left-3 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md bg-[#f5f1ed] text-[#8e8680]"><Icon className="h-3.5 w-3.5">{icon}</Icon></span>
+        <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full cursor-pointer appearance-none rounded-xl bg-transparent py-2.5 pr-8 pl-11 text-sm font-bold text-[#4d4844] outline-none">{children}</select>
+        <Icon className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-[#8e8680]"><path d="m7 10 5 5 5-5" /></Icon>
       </span>
     </label>
   );
 }
-
-const FEDERAL_EDITORIALS = new Set(["ТАСС", "РБК", "Коммерсантъ", "Ведомости"]);
 
 const ALL_SITE_ENTRIES_FLAT = Object.values(siteEntriesByCategory).flat();
 
@@ -447,27 +315,19 @@ export default function App() {
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [sourcesTab, setSourcesTab] = useState<SourcesTab>("sites");
   const [dateOrder, setDateOrder] = useState<"newest" | "oldest">("newest");
-  const [platformFilter, setPlatformFilter] = useState<SiteCategory | "all">(
-    "all",
-  );
+  const [platformFilter, setPlatformFilter] = useState<SiteCategory | "all">("all");
   const [editorialFilter, setEditorialFilter] = useState<string>("all");
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(10);
 
   const [siteSearch, setSiteSearch] = useState("");
   const [editorialSearch, setEditorialSearch] = useState("");
   const [faqOpen, setFaqOpen] = useState<Set<number>>(() => new Set());
 
-  const [selectedSiteEntries, setSelectedSiteEntries] = useState(
-    () => new Set(allSiteEntryIds),
-  );
-  const [selectedEditorials, setSelectedEditorials] = useState(
-    () => new Set(allEditorialIds),
-  );
-
-  const [expandedCategories, setExpandedCategories] = useState<
-    Set<SiteCategory>
-  >(() => new Set());
+  const [selectedSiteEntries, setSelectedSiteEntries] = useState(() => new Set(allSiteEntryIds));
+  const [selectedEditorials, setSelectedEditorials] = useState(() => new Set(allEditorialIds));
+  const [expandedCategories, setExpandedCategories] = useState<Set<SiteCategory>>(() => new Set());
 
   const syncingRef = useRef<"none" | "from-editorials" | "from-sites">("none");
 
@@ -477,18 +337,13 @@ export default function App() {
     setSelectedSiteEntries((currentEntries) => {
       const next = new Set(currentEntries);
       let changed = false;
-      Object.entries(entriesByEditorial).forEach(
-        ([editorialName, entries]) => {
-          const editorialId = `editorial-${editorialName}`;
-          const isEditorialSelected = selectedEditorials.has(editorialId);
-          entries.forEach((entry) => {
-            if (!isEditorialSelected && next.has(entry.id)) {
-              next.delete(entry.id);
-              changed = true;
-            }
-          });
-        },
-      );
+      Object.entries(entriesByEditorial).forEach(([editorialName, entries]) => {
+        const editorialId = `editorial-${editorialName}`;
+        const isEditorialSelected = selectedEditorials.has(editorialId);
+        entries.forEach((entry) => {
+          if (!isEditorialSelected && next.has(entry.id)) { next.delete(entry.id); changed = true; }
+        });
+      });
       return changed ? next : currentEntries;
     });
     syncingRef.current = "none";
@@ -499,67 +354,29 @@ export default function App() {
     Object.entries(entriesByEditorial).forEach(([editorialName, entries]) => {
       const total = entries.length;
       let selected = 0;
-      entries.forEach((entry) => {
-        if (selectedSiteEntries.has(entry.id)) selected += 1;
-      });
+      entries.forEach((entry) => { if (selectedSiteEntries.has(entry.id)) selected += 1; });
       const id = `editorial-${editorialName}`;
-      map[id] =
-        selected === 0 ? "none" : selected === total ? "all" : "partial";
+      map[id] = selected === 0 ? "none" : selected === total ? "all" : "partial";
     });
     return map;
   }, [selectedSiteEntries]);
 
   const normalizedSiteSearch = normalize(siteSearch);
   const filteredSiteEntriesByCategory = useMemo(() => {
-    const result: Record<SiteCategory, SiteEntry[]> = {
-      site: [],
-      tg: [],
-      vk: [],
-      ok: [],
-      dzen: [],
-      max: [],
-    };
+    const result: Record<SiteCategory, SiteEntry[]> = { site: [], tg: [], vk: [], ok: [], dzen: [], max: [] };
     (Object.keys(siteEntriesByCategory) as SiteCategory[]).forEach((key) => {
       const entries = siteEntriesByCategory[key];
-      result[key] = normalizedSiteSearch
-        ? entries.filter(
-            (entry) =>
-              normalize(entry.editorial).includes(normalizedSiteSearch) ||
-              normalize(entry.url).includes(normalizedSiteSearch),
-          )
-        : entries;
+      result[key] = normalizedSiteSearch ? entries.filter((entry) => normalize(entry.editorial).includes(normalizedSiteSearch) || normalize(entry.url).includes(normalizedSiteSearch)) : entries;
     });
     return result;
   }, [normalizedSiteSearch]);
 
-  const visibleCategories = useMemo(
-    () =>
-      SITE_CATEGORIES.filter(
-        (category) => filteredSiteEntriesByCategory[category.key].length > 0,
-      ),
-    [filteredSiteEntriesByCategory],
-  );
+  const visibleCategories = useMemo(() => SITE_CATEGORIES.filter((category) => filteredSiteEntriesByCategory[category.key].length > 0), [filteredSiteEntriesByCategory]);
 
-  const matchedSiteEntriesCount = useMemo(
-    () =>
-      visibleCategories.reduce(
-        (sum, category) =>
-          sum + filteredSiteEntriesByCategory[category.key].length,
-        0,
-      ),
-    [visibleCategories, filteredSiteEntriesByCategory],
-  );
+  const matchedSiteEntriesCount = useMemo(() => visibleCategories.reduce((sum, category) => sum + filteredSiteEntriesByCategory[category.key].length, 0), [visibleCategories, filteredSiteEntriesByCategory]);
 
   const normalizedEditorialSearch = normalize(editorialSearch);
-  const filteredEditorialItems = useMemo(
-    () =>
-      normalizedEditorialSearch
-        ? editorialItems.filter((item) =>
-            normalize(item.name).includes(normalizedEditorialSearch),
-          )
-        : editorialItems,
-    [normalizedEditorialSearch],
-  );
+  const filteredEditorialItems = useMemo(() => normalizedEditorialSearch ? editorialItems.filter((item) => normalize(item.name).includes(normalizedEditorialSearch)) : editorialItems, [normalizedEditorialSearch]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -569,8 +386,7 @@ export default function App() {
   const toggleCategoryExpanded = (key: SiteCategory) => {
     setExpandedCategories((current) => {
       const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
@@ -578,8 +394,7 @@ export default function App() {
   const toggleSiteEntry = (id: string) => {
     setSelectedSiteEntries((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
@@ -589,111 +404,41 @@ export default function App() {
     const entries = entriesByEditorial[editorialName] ?? [];
     const state = editorialCheckState[id] ?? "none";
     const makeSelected = state !== "all";
-
-    setSelectedEditorials((current) => {
-      const next = new Set(current);
-      if (makeSelected) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-
+    setSelectedEditorials((current) => { const next = new Set(current); if (makeSelected) next.add(id); else next.delete(id); return next; });
     syncingRef.current = "from-editorials";
-    setSelectedSiteEntries((current) => {
-      const next = new Set(current);
-      entries.forEach((entry) => {
-        if (makeSelected) next.add(entry.id);
-        else next.delete(entry.id);
-      });
-      return next;
-    });
-    window.setTimeout(() => {
-      syncingRef.current = "none";
-    }, 0);
+    setSelectedSiteEntries((current) => { const next = new Set(current); entries.forEach((entry) => { if (makeSelected) next.add(entry.id); else next.delete(entry.id); }); return next; });
+    window.setTimeout(() => { syncingRef.current = "none"; }, 0);
   };
 
   const setCategoryEntries = (key: SiteCategory, value: boolean) => {
     const ids = filteredSiteEntriesByCategory[key].map((entry) => entry.id);
-    setSelectedSiteEntries((current) => {
-      const next = new Set(current);
-      if (value) ids.forEach((id) => next.add(id));
-      else ids.forEach((id) => next.delete(id));
-      return next;
-    });
+    setSelectedSiteEntries((current) => { const next = new Set(current); if (value) ids.forEach((id) => next.add(id)); else ids.forEach((id) => next.delete(id)); return next; });
   };
 
   const setAllVisibleSiteEntries = (value: boolean) => {
-    const ids = visibleCategories.flatMap((category) =>
-      filteredSiteEntriesByCategory[category.key].map((entry) => entry.id),
-    );
-    setSelectedSiteEntries((current) => {
-      const next = new Set(current);
-      if (value) ids.forEach((id) => next.add(id));
-      else ids.forEach((id) => next.delete(id));
-      return next;
-    });
+    const ids = visibleCategories.flatMap((category) => filteredSiteEntriesByCategory[category.key].map((entry) => entry.id));
+    setSelectedSiteEntries((current) => { const next = new Set(current); if (value) ids.forEach((id) => next.add(id)); else ids.forEach((id) => next.delete(id)); return next; });
   };
 
   const toggleAllEditorials = () => {
-    const allSelected = filteredEditorialItems.every((item) =>
-      selectedEditorials.has(item.id),
-    );
+    const allSelected = filteredEditorialItems.every((item) => selectedEditorials.has(item.id));
     if (allSelected) {
       const ids = filteredEditorialItems.map((item) => item.id);
-      setSelectedEditorials((current) => {
-        const next = new Set(current);
-        ids.forEach((id) => next.delete(id));
-        return next;
-      });
+      setSelectedEditorials((current) => { const next = new Set(current); ids.forEach((id) => next.delete(id)); return next; });
       syncingRef.current = "from-editorials";
-      setSelectedSiteEntries((current) => {
-        const next = new Set(current);
-        filteredEditorialItems.forEach((item) => {
-          (entriesByEditorial[item.name] ?? []).forEach((entry) =>
-            next.delete(entry.id),
-          );
-        });
-        return next;
-      });
-      window.setTimeout(() => {
-        syncingRef.current = "none";
-      }, 0);
+      setSelectedSiteEntries((current) => { const next = new Set(current); filteredEditorialItems.forEach((item) => { (entriesByEditorial[item.name] ?? []).forEach((entry) => next.delete(entry.id)); }); return next; });
+      window.setTimeout(() => { syncingRef.current = "none"; }, 0);
     } else {
       const ids = filteredEditorialItems.map((item) => item.id);
-      setSelectedEditorials((current) => {
-        const next = new Set(current);
-        ids.forEach((id) => next.add(id));
-        return next;
-      });
+      setSelectedEditorials((current) => { const next = new Set(current); ids.forEach((id) => next.add(id)); return next; });
       syncingRef.current = "from-editorials";
-      setSelectedSiteEntries((current) => {
-        const next = new Set(current);
-        filteredEditorialItems.forEach((item) => {
-          (entriesByEditorial[item.name] ?? []).forEach((entry) =>
-            next.add(entry.id),
-          );
-        });
-        return next;
-      });
-      window.setTimeout(() => {
-        syncingRef.current = "none";
-      }, 0);
+      setSelectedSiteEntries((current) => { const next = new Set(current); filteredEditorialItems.forEach((item) => { (entriesByEditorial[item.name] ?? []).forEach((entry) => next.add(entry.id)); }); return next; });
+      window.setTimeout(() => { syncingRef.current = "none"; }, 0);
     }
   };
 
-  const allVisibleSiteEntriesSelected =
-    matchedSiteEntriesCount > 0 &&
-    visibleCategories.every((category) =>
-      filteredSiteEntriesByCategory[category.key].every((entry) =>
-        selectedSiteEntries.has(entry.id),
-      ),
-    );
-
-  const allVisibleEditorialsSelected =
-    filteredEditorialItems.length > 0 &&
-    filteredEditorialItems.every((item) => selectedEditorials.has(item.id));
-
-  const allEditorialsSelected =
-    selectedEditorials.size === allEditorialIds.length;
+  const allVisibleSiteEntriesSelected = matchedSiteEntriesCount > 0 && visibleCategories.every((category) => filteredSiteEntriesByCategory[category.key].every((entry) => selectedSiteEntries.has(entry.id)));
+  const allVisibleEditorialsSelected = filteredEditorialItems.length > 0 && filteredEditorialItems.every((item) => selectedEditorials.has(item.id));
   const totalSelected = selectedSiteEntries.size + selectedEditorials.size;
   const totalAvailable = allSiteEntryIds.length + allEditorialIds.length;
   const nothingSelected = totalSelected === 0;
@@ -702,285 +447,137 @@ export default function App() {
     const periodDays = PERIOD_DAYS_BY_KEY[period];
     return sources
       .filter((source) => {
-        if (platformFilter !== "all" && source.platform !== platformFilter) {
-          return false;
-        }
-        if (
-          editorialFilter !== "all" &&
-          source.editorial !== editorialFilter
-        ) {
-          return false;
-        }
-        if (periodDays !== undefined) {
-          if (source.ageMinutes > periodDays * 1440) return false;
-        }
+        if (platformFilter !== "all" && source.platform !== platformFilter) return false;
+        if (editorialFilter !== "all" && source.editorial !== editorialFilter) return false;
+        if (periodDays !== undefined) { if (source.ageMinutes > periodDays * 1440) return false; }
         return true;
       })
-      .sort((a, b) =>
-        dateOrder === "newest"
-          ? a.ageMinutes - b.ageMinutes
-          : b.ageMinutes - a.ageMinutes,
-      );
+      .sort((a, b) => dateOrder === "newest" ? a.ageMinutes - b.ageMinutes : b.ageMinutes - a.ageMinutes);
   }, [platformFilter, editorialFilter, dateOrder, period]);
 
-  // === Статистика источников: считается из контекста ===
+  useEffect(() => {
+    setVisibleLimit(10);
+  }, [searchedQuery, platformFilter, editorialFilter, period, dateOrder]);
 
-  const statsEditorialsCount = useMemo(() => {
-    const set = new Set(visibleSources.map((s) => s.editorial));
-    return set.size;
-  }, [visibleSources]);
+  const displayedSources = useMemo(
+    () => visibleSources.slice(0, visibleLimit),
+    [visibleSources, visibleLimit],
+  );
 
+  const statsEditorialsCount = useMemo(() => new Set(visibleSources.map((s) => s.editorial)).size, [visibleSources]);
   const statsPublicationsCount = visibleSources.length;
 
   const statsSpan = useMemo(() => {
     if (visibleSources.length === 0) return "—";
     const ages = visibleSources.map((s) => s.ageMinutes);
-    const min = Math.min(...ages);
-    const max = Math.max(...ages);
-    const diff = max - min;
+    const diff = Math.max(...ages) - Math.min(...ages);
     if (diff < 60) return `${diff} мин`;
     const hours = Math.round(diff / 60);
     if (hours < 48) return `${hours} ч`;
     return `${Math.round(hours / 24)} дн`;
   }, [visibleSources]);
 
-  const statsDistribution = useMemo(() => {
-    if (visibleSources.length === 0) {
-      return { federal: 0, regional: 0, federalPct: 0, regionalPct: 0 };
-    }
-    let federal = 0;
-    visibleSources.forEach((s) => {
-      if (FEDERAL_EDITORIALS.has(s.editorial)) federal += 1;
-    });
-    const regional = visibleSources.length - federal;
-    const federalPct = Math.round((federal / visibleSources.length) * 100);
-    const regionalPct = 100 - federalPct;
-    return { federal, regional, federalPct, regionalPct };
+  const statsConfidencePct = useMemo(() => {
+    if (visibleSources.length === 0) return 0;
+    const avgMatch = visibleSources.reduce((sum, s) => sum + s.match, 0) / visibleSources.length;
+    return Math.round(avgMatch);
   }, [visibleSources]);
 
-  const statsActiveChannels = useMemo(() => {
-    const activeEditorials = new Set(visibleSources.map((s) => s.editorial));
-    let active = 0;
-    selectedSiteEntries.forEach((id) => {
-      const entry = ALL_SITE_ENTRIES_FLAT.find((e) => e.id === id);
-      if (entry && activeEditorials.has(entry.editorial)) active += 1;
-    });
-    return active;
-  }, [visibleSources, selectedSiteEntries]);
-
-  const showFeatured =
-    platformFilter === "all" &&
-    editorialFilter === "all" &&
-    period === "all";
+  const showFeatured = platformFilter === "all" && editorialFilter === "all" && period === "all";
   const showEmptyState = visibleSources.length === 0 && !showFeatured;
 
-  const featuredCard = <article></article>;
-
   const faqItems = [
-    {
-      q: "Откуда берутся публикации?",
-      a: "Сервис собирает материалы из редакций, отмеченных во вкладке «Источники»: официальных сайтов газет, Telegram-каналов, сообществ ВКонтакте и Одноклассников, каналов на Дзене и в МАХ. Список редакций и платформ вы задаёте сами.",
-    },
-    {
-      q: "Что означает процент совпадения?",
-      a: "Это оценка того, насколько публикация близка к вашему запросу по смыслу. Чем выше процент — тем точнее материал отвечает теме. Низкий процент не значит, что новость неверная, — просто она может освещать событие под другим углом.",
-    },
-    {
-      q: "Почему у редакции стоит «минус» вместо галочки?",
-      a: "Так отмечается частичный выбор. Если вы сняли хотя бы один канал редакции во вкладке «Сайты», в «Редакциях» у неё появится знак частичной заполненности. Один клик по чекбоксу вернёт все её каналы.",
-    },
-    {
-      q: "Можно ли искать по конкретной редакции или платформе?",
-      a: "Да. В модалке «Источники» на каждой вкладке есть поле быстрого поиска: в «Сайтах» — по названию редакции и ссылке, в «Редакциях» — по названию. Найденные элементы можно выделить или снять одной кнопкой.",
-    },
-    {
-      q: "Что попадёт в сводку?",
-      a: "Краткая сводка собирает общие факты из найденных публикаций без оценок. Рядом — статистика источников: сколько изданий написали, сколько всего публикаций и как распределились федеральные и региональные СМИ.",
-    },
+    { q: "Откуда берутся публикации?", a: "Сервис собирает материалы из редакций, отмеченных во вкладке «Источники»: официальных сайтов газет, Telegram-каналов, сообществ ВКонтакте и Одноклассников, каналов на Дзене и в МАХ. Список редакций и платформ вы задаёте сами." },
+    { q: "Что означает процент совпадения?", a: "Это оценка того, насколько публикация близка к вашему запросу по смыслу. Чем выше процент — тем точнее материал отвечает теме. Низкий процент не значит, что новость неверная, — просто она может освещать событие под другим углом." },
+    { q: "Почему у редакции стоит «минус» вместо галочки?", a: "Так отмечается частичный выбор. Если вы сняли хотя бы один канал редакции во вкладке «Сайты», в «Редакциях» у неё появится знак частичной заполненности. Один клик по чекбоксу вернёт все её каналы." },
+    { q: "Можно ли искать по конкретной редакции или платформе?", a: "Да. В модалке «Источники» на каждой вкладке есть поле быстрого поиска: в «Сайтах» — по названию редакции и ссылке, в «Редакциях» — по названию. Найденные элементы можно выделить или снять одной кнопкой." },
+    { q: "Что попадёт в сводку?", a: "Краткая сводка собирает общие факты из найденных публикаций без оценок. Рядом — статистика источников: сколько изданий написали, сколько всего публикаций, охват по времени и уверенность ИИ в достоверности информации." },
   ];
 
   const toggleFaq = (index: number) => {
     setFaqOpen((current) => {
       const next = new Set(current);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(index)) next.delete(index); else next.add(index);
       return next;
     });
   };
 
   return (
     <main className="min-h-screen bg-[#f4f1ed] text-[#181716]">
-      <header className="border-b border-[#e4ded8] bg-white">
-        <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
-          <a
-            href="#"
-            className="flex items-center gap-3"
-            aria-label="Факт — главная"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#db1f2f] text-white shadow-[0_6px_18px_rgba(219,31,47,0.22)]">
-              <Icon className="h-5 w-5">
-                <path d="M12 3 5 7v5c0 4.6 2.9 7.3 7 9 4.1-1.7 7-4.4 7-9V7l-7-4Z" />
-                <path d="m9 12 2 2 4-4" />
-              </Icon>
-            </span>
-            <span className="text-xl font-extrabold tracking-[-0.04em]">
-              ФАКТ<span className="text-[#db1f2f]">.</span>
-            </span>
-          </a>
-
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#69635f] md:flex">
-            <button
-              type="button"
-              onClick={() => setHowOpen(true)}
-              className="cursor-pointer transition-colors hover:text-[#db1f2f]"
-            >
-              Как это работает
-            </button>
-          </nav>
-
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              type="button"
-              onClick={() => setHowOpen(true)}
-              className="grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-[#e4ded8]"
-              aria-label="Как это работает"
-            >
-              <Icon>
-                <circle cx="12" cy="12" r="9" />
-                <path d="M9.8 9a2.3 2.3 0 1 1 3.6 1.9c-.9.6-1.4 1.1-1.4 2.1M12 17h.01" />
-              </Icon>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto grid max-w-[1440px] lg:min-h-[calc(100vh-76px)] lg:grid-cols-[42%_58%]">
-        <section
-          id="how"
-          className="relative overflow-hidden bg-[#d91f2e] px-5 py-14 text-white sm:px-8 sm:py-20 lg:px-12 lg:py-24 xl:px-16"
-        >
+      <div className="mx-auto grid max-w-[1440px] lg:min-h-screen lg:grid-cols-[38%_62%]">
+        {/* Левая колонка */}
+        <section id="how" className="relative overflow-hidden bg-[#d91f2e] px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-12">
           <div className="absolute -top-20 -right-32 h-96 w-96 rounded-full border border-white/15" />
           <div className="absolute -top-6 -right-16 h-64 w-64 rounded-full border border-white/15" />
-
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 opacity-[0.06]"
-            style={{
-              backgroundImage: 'url("/torch.svg")',
-              backgroundRepeat: "repeat",
-              backgroundSize: "90px 144px",
-              backgroundPosition: "20px 20px",
-            }}
-          />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 opacity-[0.06]" style={{ backgroundImage: 'url("/torch.svg")', backgroundRepeat: "repeat", backgroundSize: "90px 144px", backgroundPosition: "20px 20px" }} />
 
           <div className="relative z-10 mx-auto max-w-xl lg:mx-0">
-            <div className="mb-8 flex items-center gap-2.5 text-xs font-bold tracking-[0.16em] text-white/75 uppercase">
-              <span className="h-2 w-2 rounded-full bg-white" />
-              Умный поиск по новостям
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <a href="#" className="flex items-center gap-2.5" aria-label="Факт — главная">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-[#d91f2e] shadow-[0_6px_18px_rgba(89,5,13,0.25)]">
+                  <Icon className="h-5 w-5">
+                    <path d="M12 3 5 7v5c0 4.6 2.9 7.3 7 9 4.1-1.7 7-4.4 7-9V7l-7-4Z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </Icon>
+                </span>
+                <span className="text-lg font-extrabold tracking-[-0.04em]">
+                  ФАКТ<span className="text-white/60">.</span>
+                </span>
+              </a>
+              <button type="button" onClick={() => setHowOpen(true)} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/25 bg-white/[0.07] px-2.5 py-1 text-[11px] font-bold text-white/85 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#d91f2e]">
+                <Icon className="h-3.5 w-3.5"><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.3 2.3 0 1 1 3.6 1.9c-.9.6-1.4 1.1-1.4 2.1M12 17h.01" /></Icon>
+                Как это работает
+              </button>
             </div>
-            <h1 className="max-w-lg text-[42px] leading-[1.04] font-extrabold tracking-[-0.045em] sm:text-5xl xl:text-[58px]">
+
+            <h1 className="max-w-lg text-3xl leading-[1.08] font-extrabold tracking-[-0.045em] sm:text-4xl xl:text-[46px]">
               Одна новость.
               <br />
               Все точки зрения.
             </h1>
-            <p className="mt-6 max-w-md text-base leading-7 text-white/75 sm:text-lg">
-              Введите заголовок или опишите событие — мы найдём, что об этом
-              пишут другие издания.
+            <p className="mt-3 max-w-md text-sm leading-6 text-white/75 sm:text-base">
+              Введите заголовок или опишите событие — мы найдём, что об этом пишут другие издания.
             </p>
 
-            <form onSubmit={handleSubmit} className="mt-10">
-              <label
-                htmlFor="news-query"
-                className="mb-3 block text-sm font-bold"
-              >
-                <p className="text-sm font-extrabold tracking-[0.12em] text-white uppercase">
-                  Что искать?
-                </p>
-              </label>
-              <div className="rounded-2xl bg-white p-2 shadow-[0_18px_45px_rgba(89,5,13,0.2)]">
-                <textarea
-                  id="news-query"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  rows={3}
-                  placeholder="Вставьте заголовок или текст новости..."
-                  className="w-full resize-none border-0 bg-transparent px-4 pt-3 text-[15px] leading-6 font-medium text-[#25211f] outline-none placeholder:text-[#aaa29c]"
-                />
-                <div className="flex items-center justify-end border-t border-[#eee9e5] pt-2 pr-1 pl-3">
-                  <button
-                    type="submit"
-                    className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#191716] px-5 py-3 text-sm font-bold text-white transition-all hover:bg-[#332f2c] active:scale-[0.98]"
-                  >
-                    Найти публикации
-                    <Icon className="h-4 w-4">
-                      <circle cx="11" cy="11" r="7" />
-                      <path d="m20 20-4-4" />
-                    </Icon>
+            <form onSubmit={handleSubmit} className="mt-5">
+              <div className="rounded-2xl bg-white p-1.5 shadow-[0_18px_45px_rgba(89,5,13,0.2)]">
+                <textarea id="news-query" value={query} onChange={(event) => setQuery(event.target.value)} rows={2} placeholder="Вставьте заголовок или текст новости..." className="w-full resize-none border-0 bg-transparent px-3 pt-2 text-sm leading-6 font-medium text-[#25211f] outline-none placeholder:text-[#aaa29c]" />
+                <div className="flex items-center justify-end border-t border-[#eee9e5] pt-1.5 pr-1 pl-2">
+                  <button type="submit" className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#191716] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#332f2c] active:scale-[0.98]">
+                    Найти
+                    <Icon className="h-4 w-4"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></Icon>
                   </button>
                 </div>
               </div>
             </form>
 
-            {/* === Блок «ИСТОЧНИКИ» === */}
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-sm font-extrabold tracking-[0.12em] text-white uppercase">
-                  Где искать?
-                </p>
-                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-extrabold text-white">
-                  {totalSelected}/{totalAvailable}
-                </span>
+            <div className="mt-3">
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <p className="text-[11px] font-extrabold tracking-[0.12em] text-white uppercase">Источники</p>
+                <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-white">{totalSelected}/{totalAvailable}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setSourcesOpen(true)}
-                className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl bg-white px-4 py-4 text-left shadow-[0_18px_45px_rgba(89,5,13,0.25)] ring-2 ring-white/30 transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_55px_rgba(89,5,13,0.35)] active:scale-[0.99]"
-              >
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#d91f2e] text-white shadow-[0_8px_20px_rgba(217,31,46,0.35)]">
-                  <Icon className="h-6 w-6">
-                    <circle cx="6" cy="6" r="2" />
-                    <circle cx="18" cy="12" r="2" />
-                    <circle cx="8" cy="18" r="2" />
-                    <path d="m8 7 8 4M16 13l-6 4" />
-                  </Icon>
+              <button type="button" onClick={() => setSourcesOpen(true)} className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-left shadow-[0_10px_30px_rgba(89,5,13,0.25)] ring-2 ring-white/30 transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(89,5,13,0.35)] active:scale-[0.99]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#d91f2e] text-white shadow-[0_6px_16px_rgba(217,31,46,0.35)]">
+                  <Icon className="h-5 w-5"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="8" cy="18" r="2" /><path d="m8 7 8 4M16 13l-6 4" /></Icon>
                 </span>
-
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-extrabold text-[#181716]">
-                    Настроить источники
-                  </span>
+                  <span className="block truncate text-sm font-extrabold text-[#181716]">Настроить источники</span>
                 </span>
-
-                <span className="flex shrink-0 items-center gap-2">
-                  <span className="hidden items-center gap-1.5 sm:flex"></span>
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#191716] text-white transition-transform group-hover:translate-x-0.5">
-                    <Icon className="h-4 w-4">
-                      <path d="m9 18 6-6-6-6" />
-                    </Icon>
-                  </span>
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#191716] text-white transition-transform group-hover:translate-x-0.5">
+                  <Icon className="h-4 w-4"><path d="m9 18 6-6-6-6" /></Icon>
                 </span>
               </button>
-
-              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-white/75">
-                <Icon className="h-3.5 w-3.5">
-                  <path d="m5 12 4 4 10-10" />
-                </Icon>
+              <p className="mt-1.5 flex items-center gap-1.5 text-[10px] font-semibold text-white/75">
+                <Icon className="h-3 w-3"><path d="m5 12 4 4 10-10" /></Icon>
                 По умолчанию включены все платформы и редакции
               </p>
             </div>
 
-            <div className="mt-7">
-              <p className="mb-3 text-xs font-bold text-white/55">
-                Попробуйте пример:
-              </p>
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-4">
+              <p className="mb-2 text-[10px] font-bold text-white/55">Попробуйте пример:</p>
+              <div className="flex flex-wrap gap-1.5">
                 {examples.map((example) => (
-                  <button
-                    type="button"
-                    key={example}
-                    onClick={() => setQuery(example)}
-                    className="cursor-pointer rounded-full border border-white/25 bg-white/[0.07] px-3.5 py-2 text-left text-xs font-medium text-white/85 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#d91f2e]"
-                  >
+                  <button type="button" key={example} onClick={() => setQuery(example)} className="cursor-pointer rounded-full border border-white/25 bg-white/[0.07] px-3 py-1.5 text-left text-[11px] font-medium text-white/85 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#d91f2e]">
                     {example}
                   </button>
                 ))}
@@ -989,282 +586,125 @@ export default function App() {
           </div>
         </section>
 
-        <section
-          id="sources"
-          className="bg-[#f7f5f2] px-5 py-12 sm:px-8 lg:px-10 lg:py-14 xl:px-14"
-        >
+        {/* Правая колонка */}
+        <section id="sources" className="bg-[#f7f5f2] px-4 py-6 sm:px-6 lg:px-8 lg:py-8 xl:px-10">
           <div className="mx-auto max-w-3xl">
-            <div className="flex flex-col gap-5 border-b border-[#ddd7d1] pb-7">
+            <div className="flex flex-col gap-3 border-b border-[#ddd7d1] pb-4">
               <div>
-                <div className="mb-2 flex items-center gap-2 text-xs font-bold tracking-[0.12em] text-[#d91f2e] uppercase">
-                  <span className="relative flex h-2 w-2">
+                <div className="mb-1 flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#d91f2e] uppercase">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#d91f2e] opacity-40" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#d91f2e]" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#d91f2e]" />
                   </span>
-                  {visibleSources.length > 0
-                    ? `Найдено ${visibleSources.length} публикаций`
-                    : "Публикаций по фильтрам не найдено"}
+                  {visibleSources.length > 0 ? `Найдено ${visibleSources.length} публикаций` : "Публикаций по фильтрам не найдено"}
                 </div>
-                <h2 className="text-2xl font-extrabold tracking-[-0.03em] sm:text-[30px]">
-                  Об этом пишут
-                </h2>
+                <h2 className="text-xl font-extrabold tracking-[-0.03em] sm:text-2xl">Об этом пишут</h2>
               </div>
 
-              <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {/* Период */}
-                <FilterSelect
-                  label="Период"
-                  icon={
-                    <>
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M12 7v5l3 2" />
-                    </>
-                  }
-                  value={period}
-                  onChange={(value) => setPeriod(value as PeriodKey)}
-                >
-                  {PERIOD_OPTIONS.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
+              <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <FilterSelect label="Период" icon={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} value={period} onChange={(value) => setPeriod(value as PeriodKey)}>
+                  {PERIOD_OPTIONS.map((option) => (<option key={option.key} value={option.key}>{option.label}</option>))}
                 </FilterSelect>
-
-                {/* Сортировка по дате */}
-                <FilterSelect
-                  label="Сортировка по дате"
-                  icon={
-                    <>
-                      <path d="M7 3v3M17 3v3M4 8h16M5 5h14v16H5z" />
-                    </>
-                  }
-                  value={dateOrder}
-                  onChange={(value) =>
-                    setDateOrder(value as "newest" | "oldest")
-                  }
-                >
+                <FilterSelect label="Сортировка" icon={<><path d="M7 3v3M17 3v3M4 8h16M5 5h14v16H5z" /></>} value={dateOrder} onChange={(value) => setDateOrder(value as "newest" | "oldest")}>
                   <option value="newest">Сначала новые</option>
                   <option value="oldest">Сначала старые</option>
                 </FilterSelect>
-
-                {/* Платформа */}
-                <FilterSelect
-                  label="Платформа"
-                  icon={
-                    <>
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
-                    </>
-                  }
-                  value={platformFilter}
-                  onChange={(value) =>
-                    setPlatformFilter(value as SiteCategory | "all")
-                  }
-                >
+                <FilterSelect label="Платформа" icon={<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>} value={platformFilter} onChange={(value) => setPlatformFilter(value as SiteCategory | "all")}>
                   <option value="all">Все платформы</option>
-                  {SITE_CATEGORIES.map((category) => (
-                    <option key={category.key} value={category.key}>
-                      {category.label}
-                    </option>
-                  ))}
+                  {SITE_CATEGORIES.map((category) => (<option key={category.key} value={category.key}>{category.label}</option>))}
                 </FilterSelect>
-
-                {/* Редакция */}
-                <FilterSelect
-                  label="Редакция"
-                  icon={
-                    <>
-                      <path d="M4 5h16v14H4z" />
-                      <path d="M8 9h8M8 13h8M8 17h5" />
-                    </>
-                  }
-                  value={editorialFilter}
-                  onChange={setEditorialFilter}
-                >
+                <FilterSelect label="Редакция" icon={<><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h8M8 17h5" /></>} value={editorialFilter} onChange={setEditorialFilter}>
                   <option value="all">Все редакции</option>
-                  {editorialItems.map((item) => (
-                    <option key={item.id} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
+                  {editorialItems.map((item) => (<option key={item.id} value={item.name}>{item.name}</option>))}
                 </FilterSelect>
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-[#e2dcd6] bg-white p-4 text-center shadow-[0_8px_30px_rgba(41,31,26,0.05)] sm:p-5">
-              <div className="flex items-center justify-center">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold tracking-[0.08em] text-[#9c948e] uppercase">
-                    Сводка · {PERIOD_LABEL_BY_KEY[period]}
-                  </p>
-                  <p className="mt-1 truncate text-sm font-bold text-[#2a2725] sm:text-base">
-                    «{searchedQuery}»
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-              <article className="rounded-2xl border border-[#e2dcd6] bg-white p-5 sm:p-6">
-                <div className="flex items-center gap-2 text-xs font-extrabold tracking-[0.1em] text-[#d91f2e] uppercase">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#fff0f1]">
-                    <Icon className="h-4 w-4">
-                      <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
-                    </Icon>
+            <div className="mt-3 grid gap-3 xl:grid-cols-[1.35fr_1fr]">
+              <article className="rounded-xl border border-[#e2dcd6] bg-white p-4">
+                <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-[0.1em] text-[#d91f2e] uppercase">
+                  <span className="grid h-6 w-6 place-items-center rounded-md bg-[#fff0f1]">
+                    <Icon className="h-3.5 w-3.5"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" /></Icon>
                   </span>
                   Краткая сводка
                 </div>
-                <p className="mt-4 text-sm leading-6 font-medium text-[#514c48]">
-                  В центре Москвы временно ограничат движение из-за городского
-                  мероприятия. Перекрытия начнут действовать в субботу утром и
-                  затронут несколько центральных улиц. Водителям советуют
-                  заранее выбирать альтернативные маршруты.
+                <p className="mt-2.5 text-xs leading-5 font-medium text-[#514c48]">
+                  В центре Москвы временно ограничат движение из-за городского мероприятия. Перекрытия начнут действовать в субботу утром и затронут несколько центральных улиц. Водителям советуют заранее выбирать альтернативные маршруты.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {["Москва", "Транспорт", "Выходные"].map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-[#f5f1ed] px-3 py-1.5 text-[11px] font-bold text-[#756e68]"
-                    >
-                      {tag}
-                    </span>
+                    <span key={tag} className="rounded-full bg-[#f5f1ed] px-2.5 py-1 text-[10px] font-bold text-[#756e68]">{tag}</span>
                   ))}
                 </div>
               </article>
 
-              <aside className="rounded-2xl bg-[#211f1d] p-5 text-white sm:p-6">
+              <aside className="rounded-xl bg-[#211f1d] p-4 text-white">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-extrabold tracking-[0.1em] text-white/55 uppercase">
-                    Статистика источников
-                  </p>
-                  <Icon className="h-4 w-4 text-[#ef4755]">
-                    <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
-                  </Icon>
+                  <p className="text-[10px] font-extrabold tracking-[0.1em] text-white/55 uppercase">Статистика</p>
+                  <Icon className="h-3.5 w-3.5 text-[#ef4755]"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></Icon>
                 </div>
-
-                <p className="mt-2 text-[10px] font-semibold text-white/40">
+                <p className="mt-1 text-[9px] font-semibold text-white/40">
                   {PERIOD_LABEL_BY_KEY[period]}
-                  {platformFilter !== "all" &&
-                    ` · ${
-                      SITE_CATEGORIES.find((c) => c.key === platformFilter)
-                        ?.label
-                    }`}
+                  {platformFilter !== "all" && ` · ${SITE_CATEGORIES.find((c) => c.key === platformFilter)?.label}`}
                   {editorialFilter !== "all" && ` · ${editorialFilter}`}
                 </p>
-
-                <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                   <div>
-                    <p className="text-2xl font-extrabold tracking-[-0.04em]">
-                      {statsEditorialsCount}
-                    </p>
-                    <p className="mt-1 text-[10px] leading-4 text-white/50">
-                      {statsEditorialsCount === 1 ? "издание" : "изданий"}
-                    </p>
+                    <p className="text-lg font-extrabold tracking-[-0.04em]">{statsEditorialsCount}</p>
+                    <p className="mt-0.5 text-[9px] leading-3 text-white/50">{statsEditorialsCount === 1 ? "издание" : "изданий"}</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-extrabold tracking-[-0.04em]">
-                      {statsPublicationsCount}
-                    </p>
-                    <p className="mt-1 text-[10px] leading-4 text-white/50">
-                      {statsPublicationsCount === 1
-                        ? "публикация"
-                        : "публикации"}
-                    </p>
+                    <p className="text-lg font-extrabold tracking-[-0.04em]">{statsPublicationsCount}</p>
+                    <p className="mt-0.5 text-[9px] leading-3 text-white/50">{statsPublicationsCount === 1 ? "публикация" : "публикации"}</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-extrabold tracking-[-0.04em]">
-                      {statsSpan}
-                    </p>
-                    <p className="mt-1 text-[10px] leading-4 text-white/50">
-                      охват
-                    </p>
+                    <p className="text-lg font-extrabold tracking-[-0.04em]">{statsSpan}</p>
+                    <p className="mt-0.5 text-[9px] leading-3 text-white/50">охват</p>
                   </div>
                 </div>
-
-                <div className="mt-5 border-t border-white/10 pt-4">
-                  <div className="mb-2 flex justify-between text-[10px] font-bold text-white/55">
-                    <span>Федеральные СМИ</span>
-                    <span>{statsDistribution.federalPct}%</span>
+                <div className="mt-3 border-t border-white/10 pt-2.5">
+                  <div className="mb-1 flex justify-between text-[9px] font-bold text-white/55">
+                    <span>Уверенность ИИ в достоверности</span>
+                    <span>{statsConfidencePct}%</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-[#ef4755] transition-all duration-500"
-                      style={{ width: `${statsDistribution.federalPct}%` }}
-                    />
+                  <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-[#ef4755] transition-all duration-500" style={{ width: `${statsConfidencePct}%` }} />
                   </div>
-
-                  <div className="mt-3 mb-2 flex justify-between text-[10px] font-bold text-white/55">
-                    <span>Региональные СМИ</span>
-                    <span>{statsDistribution.regionalPct}%</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-white/70 transition-all duration-500"
-                      style={{ width: `${statsDistribution.regionalPct}%` }}
-                    />
-                  </div>
+                  <p className="mt-2 text-[9px] leading-3 text-white/40">
+                    Оценка основана на совпадении фактов в публикациях разных изданий
+                  </p>
                 </div>
               </aside>
             </div>
 
-            <div className="mt-5 space-y-3">
-              {showFeatured && dateOrder === "newest" && featuredCard}
-
-              {visibleSources.map((source) => {
+            <div className="mt-3 space-y-2">
+              {displayedSources.map((source) => {
                 const isExpanded = expandedNewsId === source.id;
-
+                const platformMeta = PLATFORM_META[source.platform as SiteCategory] ?? PLATFORM_META.site;
                 return (
-                  <article
-                    key={source.id}
-                    onClick={() =>
-                      setExpandedNewsId(isExpanded ? null : source.id)
-                    }
-                    className="cursor-pointer rounded-2xl border border-[#e2dcd6] bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d3cbc4] hover:shadow-[0_10px_30px_rgba(41,31,26,0.07)]"
-                  >
-                    <div className="flex items-start gap-4">
-                      <span
-                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black text-white ${source.badgeClass}`}
-                      >
-                        {source.badge}
-                      </span>
-
+                  <article key={source.id} onClick={() => setExpandedNewsId(isExpanded ? null : source.id)} className="cursor-pointer rounded-xl border border-[#e2dcd6] bg-white p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d3cbc4] hover:shadow-[0_8px_24px_rgba(41,31,26,0.07)]">
+                    <div className="flex items-start gap-3">
+                      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xs font-black text-white ${source.badgeClass}`}>{source.badge}</span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 text-xs">
                             <span className="font-extrabold">{source.name}</span>
                             <span className="text-[#b5ada7]">•</span>
                             <span className="text-[#9a928c]">{source.time}</span>
                           </div>
-
-                          <span className="rounded-full bg-[#fff0f1] px-2.5 py-1 text-[11px] font-extrabold text-[#d91f2e]">
-                            {source.match}% совпадение
+                          <span
+                            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white"
+                            style={{ backgroundColor: platformMeta.color }}
+                          >
+                            {platformMeta.label}
                           </span>
                         </div>
-
-                        <h3 className="mt-3 leading-snug font-extrabold tracking-[-0.015em]">
-                          {source.title}
-                        </h3>
-
-                        <p
-                          className={`mt-2 text-sm leading-6 text-[#77706b] ${
-                            isExpanded ? "" : "line-clamp-2"
-                          }`}
-                        >
-                          {source.excerpt}
-                        </p>
-
+                        <h3 className="mt-2 text-sm leading-snug font-extrabold tracking-[-0.015em]">{source.title}</h3>
+                        <p className={`mt-1.5 text-xs leading-5 text-[#77706b] ${isExpanded ? "" : "line-clamp-2"}`}>{source.excerpt}</p>
                         {isExpanded && (
-                          <a
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(event) => event.stopPropagation()}
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#d91f2e] hover:underline"
-                          >
+                          <a href={source.url} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-[#d91f2e] hover:underline">
                             Читать в источнике
-                            <Icon className="h-4 w-4">
-                              <path d="M7 17 17 7M8 7h9v9" />
-                            </Icon>
+                            <Icon className="h-3.5 w-3.5"><path d="M7 17 17 7M8 7h9v9" /></Icon>
                           </a>
                         )}
                       </div>
@@ -1273,24 +713,19 @@ export default function App() {
                 );
               })}
 
-              {showFeatured && dateOrder === "oldest" && featuredCard}
-
               {showEmptyState && (
-                <div className="rounded-2xl border border-dashed border-[#d9d2cc] bg-white px-5 py-10 text-center">
-                  <p className="text-sm font-bold text-[#514c48]">
-                    По выбранным фильтрам публикаций нет
-                  </p>
-                  <p className="mt-1 text-xs text-[#918983]">
-                    Попробуйте выбрать другой период, платформу или редакцию.
-                  </p>
+                <div className="rounded-xl border border-dashed border-[#d9d2cc] bg-white px-4 py-8 text-center">
+                  <p className="text-sm font-bold text-[#514c48]">По выбранным фильтрам публикаций нет</p>
+                  <p className="mt-1 text-xs text-[#918983]">Попробуйте выбрать другой период, платформу или редакцию.</p>
                 </div>
               )}
             </div>
 
-            {visibleSources.length > 0 && (
+            {visibleSources.length > 10 && visibleLimit < visibleSources.length && (
               <button
                 type="button"
-                className="mt-5 w-full cursor-pointer rounded-xl border border-[#d9d2cc] bg-transparent py-3.5 text-sm font-bold transition-colors hover:border-[#d91f2e] hover:bg-white hover:text-[#d91f2e]"
+                onClick={() => setVisibleLimit((current) => current + 10)}
+                className="mt-3 w-full cursor-pointer rounded-xl border border-[#d9d2cc] bg-transparent py-2.5 text-xs font-bold transition-colors hover:border-[#d91f2e] hover:bg-white hover:text-[#d91f2e]"
               >
                 Показать ещё публикации
               </button>
@@ -1299,280 +734,68 @@ export default function App() {
         </section>
       </div>
 
+      {/* Модалка «Как это работает» */}
       {howOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#181411]/55 p-0 backdrop-blur-[3px] sm:items-center sm:p-5"
-          onMouseDown={() => setHowOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="how-title"
-            onMouseDown={(event) => event.stopPropagation()}
-            className="max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-[#f7f5f2] shadow-[0_30px_90px_rgba(23,18,15,0.3)] sm:max-w-3xl sm:rounded-[28px]"
-          >
-            <div className="relative overflow-hidden bg-[#d91f2e] px-5 py-7 text-white sm:px-8 sm:py-9">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#181411]/55 p-0 backdrop-blur-[3px] sm:items-center sm:p-4" onMouseDown={() => setHowOpen(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="how-title" onMouseDown={(event) => event.stopPropagation()} className="max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] bg-[#f7f5f2] shadow-[0_30px_90px_rgba(23,18,15,0.3)] sm:max-w-2xl sm:rounded-[24px]">
+            <div className="relative overflow-hidden bg-[#d91f2e] px-4 py-5 text-white sm:px-6 sm:py-6">
               <div className="absolute -top-20 right-12 h-56 w-56 rounded-full border border-white/15" />
-              <div className="absolute -top-10 right-24 h-36 w-36 rounded-full border border-white/15" />
-              <button
-                type="button"
-                onClick={() => setHowOpen(false)}
-                className="absolute top-5 right-5 z-10 grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
-                aria-label="Закрыть"
-              >
-                <Icon className="h-5 w-5">
-                  <path d="m6 6 12 12M18 6 6 18" />
-                </Icon>
+              <button type="button" onClick={() => setHowOpen(false)} className="absolute top-3.5 right-3.5 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25" aria-label="Закрыть">
+                <Icon className="h-5 w-5"><path d="m6 6 12 12M18 6 6 18" /></Icon>
               </button>
-              <div className="relative max-w-xl pr-12">
-                <p className="mb-2 text-[11px] font-extrabold tracking-[0.14em] text-white/65 uppercase">
-                  Быстрый старт
-                </p>
-                <h2
-                  id="how-title"
-                  className="text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl"
-                >
-                  Как работает ФАКТ
-                </h2>
-                <p className="mt-3 max-w-lg text-sm leading-6 text-white/80">
-                  Один запрос — и вы видите, как одну и ту же новость освещают
-                  разные редакции: что общего в фактах, чем отличаются
-                  формулировки и кто написал первым.
-                </p>
+              <div className="relative max-w-xl pr-10">
+                <p className="mb-1 text-[10px] font-extrabold tracking-[0.14em] text-white/65 uppercase">Быстрый старт</p>
+                <h2 id="how-title" className="text-2xl font-extrabold tracking-[-0.04em] sm:text-3xl">Как работает ФАКТ</h2>
+                <p className="mt-2 max-w-lg text-xs leading-5 text-white/80">Один запрос — и вы видите, как одну и ту же новость освещают разные редакции.</p>
               </div>
             </div>
 
-            <div className="px-5 py-6 sm:px-8 sm:py-8">
-              <div className="grid gap-3 sm:grid-cols-2">
+            <div className="px-4 py-4 sm:px-6 sm:py-5">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {[
-                  {
-                    number: "01",
-                    title: "Опишите новость",
-                    text: "Вставьте заголовок, ссылку или коротко опишите событие своими словами. Достаточно одной фразы — остальное сервис поймёт сам.",
-                    icon: (
-                      <>
-                        <path d="M4 5h16v14H4z" />
-                        <path d="M8 9h8M8 13h5" />
-                      </>
-                    ),
-                  },
-                  {
-                    number: "02",
-                    title: "Проверьте источники",
-                    text: "В модалке «Источники» отметьте платформы и редакции, которым доверяете. По умолчанию включены все — можно сузить охват.",
-                    icon: (
-                      <>
-                        <circle cx="6" cy="6" r="2" />
-                        <circle cx="18" cy="12" r="2" />
-                        <circle cx="8" cy="18" r="2" />
-                        <path d="m8 7 8 4M16 13l-6 4" />
-                      </>
-                    ),
-                  },
-                  {
-                    number: "03",
-                    title: "Получите подборку",
-                    text: "Сервис найдёт похожие материалы, отсортирует их по времени или по проценту совпадения и соберёт краткую сводку по общим фактам.",
-                    icon: (
-                      <>
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="m20 20-4-4" />
-                      </>
-                    ),
-                  },
-                  {
-                    number: "04",
-                    title: "Сравните точки зрения",
-                    text: "Откройте публикацию, чтобы прочитать оригинал, и сравните формулировки разных изданий. Так проще заметить акценты и расхождения.",
-                    icon: (
-                      <>
-                        <path d="M5 4h14v16H5z" />
-                        <path d="M8 9h8M8 13h8M8 17h4" />
-                      </>
-                    ),
-                  },
+                  { number: "01", title: "Опишите новость", text: "Вставьте заголовок, ссылку или коротко опишите событие своими словами.", icon: (<><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h5" /></>) },
+                  { number: "02", title: "Проверьте источники", text: "В модалке «Источники» отметьте платформы и редакции, которым доверяете.", icon: (<><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="8" cy="18" r="2" /><path d="m8 7 8 4M16 13l-6 4" /></>) },
+                  { number: "03", title: "Получите подборку", text: "Сервис найдёт похожие материалы и соберёт краткую сводку по общим фактам.", icon: (<><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>) },
+                  { number: "04", title: "Сравните точки зрения", text: "Откройте публикацию и сравните формулировки разных изданий.", icon: (<><path d="M5 4h14v16H5z" /><path d="M8 9h8M8 13h8M8 17h4" /></>) },
                 ].map((step) => (
-                  <article
-                    key={step.number}
-                    className="relative overflow-hidden rounded-2xl border border-[#e2dcd6] bg-white p-5"
-                  >
-                    <span className="absolute top-3 right-4 text-4xl font-extrabold tracking-[-0.06em] text-[#eee9e5]">
-                      {step.number}
-                    </span>
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#fff0f1] text-[#d91f2e]">
-                      <Icon className="h-5 w-5">{step.icon}</Icon>
-                    </span>
-                    <h3 className="mt-5 text-base font-extrabold">
-                      {step.title}
-                    </h3>
-                    <p className="mt-2 text-xs leading-5 text-[#817a74]">
-                      {step.text}
-                    </p>
+                  <article key={step.number} className="relative overflow-hidden rounded-xl border border-[#e2dcd6] bg-white p-3.5">
+                    <span className="absolute top-2 right-3 text-3xl font-extrabold tracking-[-0.06em] text-[#eee9e5]">{step.number}</span>
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#fff0f1] text-[#d91f2e]"><Icon className="h-4 w-4">{step.icon}</Icon></span>
+                    <h3 className="mt-3 text-sm font-extrabold">{step.title}</h3>
+                    <p className="mt-1 text-[11px] leading-4 text-[#817a74]">{step.text}</p>
                   </article>
                 ))}
               </div>
 
-              <div className="mt-6 rounded-2xl border border-[#e2dcd6] bg-white p-5 sm:p-6">
-                <div className="flex items-center gap-2 text-xs font-extrabold tracking-[0.1em] text-[#d91f2e] uppercase">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#fff0f1]">
-                    <Icon className="h-4 w-4">
-                      <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
-                    </Icon>
-                  </span>
-                  Как читать результаты
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {[
-                    {
-                      title: "Процент совпадения",
-                      text: "Насколько публикация близка к вашему запросу по смыслу. Чем выше — тем точнее материал отвечает теме.",
-                    },
-                    {
-                      title: "Краткая сводка",
-                      text: "Общие факты из найденных публикаций без оценок: что произошло, где и когда.",
-                    },
-                    {
-                      title: "Статистика источников",
-                      text: "Сколько изданий написали о событии, сколько всего публикаций и как распределились федеральные и региональные СМИ.",
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.title}
-                      className="rounded-xl bg-[#faf8f6] p-4"
-                    >
-                      <p className="text-sm font-extrabold">{item.title}</p>
-                      <p className="mt-1.5 text-xs leading-5 text-[#817a74]">
-                        {item.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-2xl bg-[#211f1d] p-5 text-white sm:p-6">
-                <p className="text-xs font-extrabold tracking-[0.1em] text-[#ef4755] uppercase">
-                  Настройка источников
-                </p>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm font-extrabold">Вкладка «Сайты»</p>
-                    <p className="mt-1.5 text-xs leading-5 text-white/70">
-                      Шесть платформ — сайты газет, ТГ, ВК, ОК, Дзен, МАХ.
-                      Разверните платформу, чтобы выбрать конкретные каналы,
-                      или используйте быстрый поиск по названию редакции и
-                      ссылке.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-extrabold">Вкладка «Редакции»</p>
-                    <p className="mt-1.5 text-xs leading-5 text-white/70">
-                      Список всех редакций. Снятие редакции автоматически
-                      снимает все её каналы. Если снять часть каналов, у
-                      редакции появится знак частичной заполненности.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {[
-                    "Быстрый поиск по названию и ссылке",
-                    "Частичные галочки",
-                    "Выбрать все / снять все",
-                  ].map((chip) => (
-                    <span
-                      key={chip}
-                      className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/85"
-                    >
-                      <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-[#d91f2e] text-white">
-                        <Icon className="h-2 w-2">
-                          <path d="m5 12 4 4 10-10" />
-                        </Icon>
-                      </span>
-                      {chip}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <div className="mb-3 flex items-center gap-2 text-xs font-extrabold tracking-[0.1em] text-[#d91f2e] uppercase">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#fff0f1]">
-                    <Icon className="h-4 w-4">
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M9.8 9a2.3 2.3 0 1 1 3.6 1.9c-.9.6-1.4 1.1-1.4 2.1M12 17h.01" />
-                    </Icon>
-                  </span>
+              <div className="mt-4">
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-extrabold tracking-[0.1em] text-[#d91f2e] uppercase">
+                  <span className="grid h-6 w-6 place-items-center rounded-md bg-[#fff0f1]"><Icon className="h-3.5 w-3.5"><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.3 2.3 0 1 1 3.6 1.9c-.9.6-1.4 1.1-1.4 2.1M12 17h.01" /></Icon></span>
                   Частые вопросы
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   {faqItems.map((item, index) => {
                     const isOpen = faqOpen.has(index);
                     return (
-                      <div
-                        key={item.q}
-                        className="overflow-hidden rounded-xl border border-[#e2dcd6] bg-white"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleFaq(index)}
-                          className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#faf8f6]"
-                          aria-expanded={isOpen}
-                        >
-                          <span className="text-sm font-extrabold">
-                            {item.q}
-                          </span>
-                          <Icon
-                            className={`h-4 w-4 shrink-0 text-[#8e8680] transition-transform ${
-                              isOpen ? "rotate-180" : ""
-                            }`}
-                          >
-                            <path d="m7 10 5 5 5-5" />
-                          </Icon>
+                      <div key={item.q} className="overflow-hidden rounded-lg border border-[#e2dcd6] bg-white">
+                        <button type="button" onClick={() => toggleFaq(index)} className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#faf8f6]" aria-expanded={isOpen}>
+                          <span className="text-xs font-extrabold">{item.q}</span>
+                          <Icon className={`h-4 w-4 shrink-0 text-[#8e8680] transition-transform ${isOpen ? "rotate-180" : ""}`}><path d="m7 10 5 5 5-5" /></Icon>
                         </button>
-                        {isOpen && (
-                          <div className="border-t border-[#eee9e5] bg-[#faf8f6] px-4 py-3">
-                            <p className="text-xs leading-5 text-[#6b655f]">
-                              {item.a}
-                            </p>
-                          </div>
-                        )}
+                        {isOpen && (<div className="border-t border-[#eee9e5] bg-[#faf8f6] px-3 py-2.5"><p className="text-[11px] leading-4 text-[#6b655f]">{item.a}</p></div>)}
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHowOpen(false);
-                    setSourcesOpen(true);
-                  }}
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#d9d2cc] bg-white px-5 py-3 text-sm font-extrabold text-[#292522] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]"
-                >
-                  <Icon className="h-4 w-4">
-                    <circle cx="6" cy="6" r="2" />
-                    <circle cx="18" cy="12" r="2" />
-                    <circle cx="8" cy="18" r="2" />
-                    <path d="m8 7 8 4M16 13l-6 4" />
-                  </Icon>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => { setHowOpen(false); setSourcesOpen(true); }} className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#d9d2cc] bg-white px-4 py-2.5 text-xs font-extrabold text-[#292522] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
+                  <Icon className="h-4 w-4"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="8" cy="18" r="2" /><path d="m8 7 8 4M16 13l-6 4" /></Icon>
                   Настроить источники
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHowOpen(false);
-                    window.setTimeout(
-                      () => document.getElementById("news-query")?.focus(),
-                      100,
-                    );
-                  }}
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#d91f2e] px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-[#ef3040]"
-                >
-                  Попробовать сейчас
-                  <Icon className="h-4 w-4">
-                    <path d="m9 18 6-6-6-6" />
-                  </Icon>
+                <button type="button" onClick={() => { setHowOpen(false); window.setTimeout(() => document.getElementById("news-query")?.focus(), 100); }} className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#d91f2e] px-4 py-2.5 text-xs font-extrabold text-white transition-colors hover:bg-[#ef3040]">
+                  Попробовать
+                  <Icon className="h-4 w-4"><path d="m9 18 6-6-6-6" /></Icon>
                 </button>
               </div>
             </div>
@@ -1580,280 +803,96 @@ export default function App() {
         </div>
       )}
 
+      {/* Модалка «Источники» */}
       {sourcesOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#181411]/55 p-0 backdrop-blur-[3px] sm:items-center sm:p-5"
-          onMouseDown={() => setSourcesOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="sources-title"
-            onMouseDown={(event) => event.stopPropagation()}
-            className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] bg-[#f7f5f2] shadow-[0_30px_90px_rgba(23,18,15,0.3)] sm:max-w-3xl sm:rounded-[28px]"
-          >
-            <div className="flex items-start justify-between border-b border-[#e2dcd6] bg-white px-5 py-5 sm:px-7 sm:py-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#181411]/55 p-0 backdrop-blur-[3px] sm:items-center sm:p-4" onMouseDown={() => setSourcesOpen(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="sources-title" onMouseDown={(event) => event.stopPropagation()} className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[24px] bg-[#f7f5f2] shadow-[0_30px_90px_rgba(23,18,15,0.3)] sm:max-w-2xl sm:rounded-[24px]">
+            <div className="flex items-start justify-between border-b border-[#e2dcd6] bg-white px-4 py-4 sm:px-6">
               <div>
-                <p className="mb-1.5 text-[11px] font-extrabold tracking-[0.12em] text-[#d91f2e] uppercase">
-                  Настройка поиска
-                </p>
-                <h2
-                  id="sources-title"
-                  className="text-2xl font-extrabold tracking-[-0.035em]"
-                >
-                  Выберите источники
-                </h2>
-                <p className="mt-2 text-sm text-[#817a74]">
-                  Воспользуйтесь быстрым поиском или разверните платформу, чтобы
-                  выбрать конкретные каналы. Выбор редакции влияет на все её
-                  каналы.
-                </p>
+                <p className="mb-1 text-[10px] font-extrabold tracking-[0.12em] text-[#d91f2e] uppercase">Настройка поиска</p>
+                <h2 id="sources-title" className="text-xl font-extrabold tracking-[-0.035em]">Выберите источники</h2>
+                <p className="mt-1 text-xs text-[#817a74]">Быстрый поиск или разверните платформу. Выбор редакции влияет на все её каналы.</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSourcesOpen(false)}
-                className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full bg-[#f4f1ed] text-[#5f5954] transition-colors hover:bg-[#ebe5df] hover:text-[#d91f2e]"
-                aria-label="Закрыть"
-              >
-                <Icon className="h-5 w-5">
-                  <path d="m6 6 12 12M18 6 6 18" />
-                </Icon>
+              <button type="button" onClick={() => setSourcesOpen(false)} className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-full bg-[#f4f1ed] text-[#5f5954] transition-colors hover:bg-[#ebe5df] hover:text-[#d91f2e]" aria-label="Закрыть">
+                <Icon className="h-5 w-5"><path d="m6 6 12 12M18 6 6 18" /></Icon>
               </button>
             </div>
 
-            <div className="flex gap-1 border-b border-[#e2dcd6] bg-white px-5 sm:px-7">
-              <button
-                type="button"
-                onClick={() => setSourcesTab("sites")}
-                className={`-mb-px cursor-pointer border-b-2 px-4 py-3 text-sm font-extrabold transition-colors ${
-                  sourcesTab === "sites"
-                    ? "border-[#d91f2e] text-[#d91f2e]"
-                    : "border-transparent text-[#7a736d] hover:text-[#2a2725]"
-                }`}
-              >
+            <div className="flex gap-1 border-b border-[#e2dcd6] bg-white px-4 sm:px-6">
+              <button type="button" onClick={() => setSourcesTab("sites")} className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-xs font-extrabold transition-colors ${sourcesTab === "sites" ? "border-[#d91f2e] text-[#d91f2e]" : "border-transparent text-[#7a736d] hover:text-[#2a2725]"}`}>
                 Сайты
-                <span className="ml-2 rounded-full bg-[#fff0f1] px-2 py-0.5 text-[10px] font-extrabold text-[#d91f2e]">
-                  {selectedSiteEntries.size}/{allSiteEntryIds.length}
-                </span>
+                <span className="ml-1.5 rounded-full bg-[#fff0f1] px-1.5 py-0.5 text-[9px] font-extrabold text-[#d91f2e]">{selectedSiteEntries.size}/{allSiteEntryIds.length}</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setSourcesTab("editorials")}
-                className={`-mb-px cursor-pointer border-b-2 px-4 py-3 text-sm font-extrabold transition-colors ${
-                  sourcesTab === "editorials"
-                    ? "border-[#d91f2e] text-[#d91f2e]"
-                    : "border-transparent text-[#7a736d] hover:text-[#2a2725]"
-                }`}
-              >
+              <button type="button" onClick={() => setSourcesTab("editorials")} className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-xs font-extrabold transition-colors ${sourcesTab === "editorials" ? "border-[#d91f2e] text-[#d91f2e]" : "border-transparent text-[#7a736d] hover:text-[#2a2725]"}`}>
                 Редакции
-                <span className="ml-2 rounded-full bg-[#fff0f1] px-2 py-0.5 text-[10px] font-extrabold text-[#d91f2e]">
-                  {selectedEditorials.size}/{allEditorialIds.length}
-                </span>
+                <span className="ml-1.5 rounded-full bg-[#fff0f1] px-1.5 py-0.5 text-[9px] font-extrabold text-[#d91f2e]">{selectedEditorials.size}/{allEditorialIds.length}</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
               {sourcesTab === "sites" && (
                 <section aria-labelledby="sites-heading">
-                  <QuickSearch
-                    value={siteSearch}
-                    onChange={setSiteSearch}
-                    placeholder="Поиск по редакции или ссылке…"
-                    count={matchedSiteEntriesCount}
-                    total={allSiteEntryIds.length}
-                  />
-
-                  <div className="mb-3 flex items-center justify-between gap-3">
+                  <QuickSearch value={siteSearch} onChange={setSiteSearch} placeholder="Поиск по редакции или ссылке…" count={matchedSiteEntriesCount} total={allSiteEntryIds.length} />
+                  <div className="mb-2.5 flex items-center justify-between gap-3">
                     <div>
-                      <h3
-                        id="sites-heading"
-                        className="flex items-center gap-2 text-sm font-extrabold tracking-[0.04em] text-[#2a2725] uppercase"
-                      >
-                        <Icon className="h-4 w-4 text-[#d91f2e]">
-                          <circle cx="12" cy="12" r="9" />
-                          <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
-                        </Icon>
+                      <h3 id="sites-heading" className="flex items-center gap-1.5 text-xs font-extrabold tracking-[0.04em] text-[#2a2725] uppercase">
+                        <Icon className="h-3.5 w-3.5 text-[#d91f2e]"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></Icon>
                         Платформы
                       </h3>
-                      <p className="mt-1 text-xs text-[#918983]">
-                        Выбрано {selectedSiteEntries.size} из{" "}
-                        {allSiteEntryIds.length} каналов
-                      </p>
+                      <p className="mt-0.5 text-[11px] text-[#918983]">Выбрано {selectedSiteEntries.size} из {allSiteEntryIds.length} каналов</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAllVisibleSiteEntries(!allVisibleSiteEntriesSelected)
-                      }
-                      className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-3 py-1.5 text-xs font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]"
-                    >
-                      {allVisibleSiteEntriesSelected
-                        ? siteSearch
-                          ? "Снять найденные"
-                          : "Снять все"
-                        : siteSearch
-                          ? "Выбрать найденные"
-                          : "Выбрать все"}
+                    <button type="button" onClick={() => setAllVisibleSiteEntries(!allVisibleSiteEntriesSelected)} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
+                      {allVisibleSiteEntriesSelected ? (siteSearch ? "Снять найденные" : "Снять все") : (siteSearch ? "Выбрать найденные" : "Выбрать все")}
                     </button>
                   </div>
 
                   {visibleCategories.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#d9d2cc] bg-white px-4 py-10 text-center">
-                      <p className="text-sm font-bold text-[#514c48]">
-                        Ничего не найдено
-                      </p>
-                      <p className="mt-1 text-xs text-[#918983]">
-                        Попробуйте изменить запрос — например, часть названия
-                        редакции или домен.
-                      </p>
+                    <div className="rounded-xl border border-dashed border-[#d9d2cc] bg-white px-4 py-8 text-center">
+                      <p className="text-sm font-bold text-[#514c48]">Ничего не найдено</p>
+                      <p className="mt-1 text-xs text-[#918983]">Попробуйте изменить запрос.</p>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5">
                       {visibleCategories.map((category) => {
-                        const entries =
-                          filteredSiteEntriesByCategory[category.key];
-                        const selectedCount = entries.filter((entry) =>
-                          selectedSiteEntries.has(entry.id),
-                        ).length;
-                        const isAllSelected =
-                          entries.length > 0 &&
-                          selectedCount === entries.length;
+                        const entries = filteredSiteEntriesByCategory[category.key];
+                        const selectedCount = entries.filter((entry) => selectedSiteEntries.has(entry.id)).length;
+                        const isAllSelected = entries.length > 0 && selectedCount === entries.length;
                         const isNoneSelected = selectedCount === 0;
-                        const isExpanded = siteSearch
-                          ? true
-                          : expandedCategories.has(category.key);
+                        const isExpanded = siteSearch ? true : expandedCategories.has(category.key);
 
                         return (
-                          <div
-                            key={category.key}
-                            className="overflow-hidden rounded-xl border border-[#e2dcd6] bg-white"
-                          >
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() =>
-                                toggleCategoryExpanded(category.key)
-                              }
-                              onKeyDown={(event) => {
-                                if (
-                                  event.key === "Enter" ||
-                                  event.key === " "
-                                ) {
-                                  event.preventDefault();
-                                  toggleCategoryExpanded(category.key);
-                                }
-                              }}
-                              className="flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-[#faf8f6]"
-                            >
-                              <span
-                                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white"
-                                style={{ backgroundColor: category.color }}
-                              >
-                                <Icon className="h-5 w-5">
-                                  {category.icon}
-                                </Icon>
-                              </span>
-
+                          <div key={category.key} className="overflow-hidden rounded-lg border border-[#e2dcd6] bg-white">
+                            <div role="button" tabIndex={0} onClick={() => toggleCategoryExpanded(category.key)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleCategoryExpanded(category.key); } }} className="flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2.5 text-left transition-colors hover:bg-[#faf8f6]">
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white" style={{ backgroundColor: category.color }}><Icon className="h-4 w-4">{category.icon}</Icon></span>
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-extrabold">
-                                  {category.label}
-                                </span>
-                                <span className="mt-0.5 block truncate text-[11px] text-[#918983]">
-                                  {selectedCount} из {entries.length} выбрано
-                                  {siteSearch ? " · найдено по запросу" : ""}
-                                </span>
+                                <span className="block truncate text-xs font-extrabold">{category.label}</span>
+                                <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{selectedCount} из {entries.length} выбрано{siteSearch ? " · найдено" : ""}</span>
                               </span>
-
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setCategoryEntries(
-                                    category.key,
-                                    !isAllSelected,
-                                  );
-                                }}
-                                aria-label={
-                                  isAllSelected
-                                    ? `Снять все ${category.label}`
-                                    : `Выбрать все ${category.label}`
-                                }
-                                className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border transition-colors ${
-                                  isAllSelected
-                                    ? "border-[#d91f2e] bg-[#d91f2e] text-white"
-                                    : isNoneSelected
-                                      ? "border-[#c8c0b9] bg-white"
-                                      : "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]"
-                                }`}
-                              >
-                                {isAllSelected && (
-                                  <Icon className="h-3.5 w-3.5">
-                                    <path d="m5 12 4 4 10-10" />
-                                  </Icon>
-                                )}
-                                {!isAllSelected && !isNoneSelected && (
-                                  <span className="h-0.5 w-3 rounded bg-[#d91f2e]" />
-                                )}
+                              <button type="button" onClick={(event) => { event.stopPropagation(); setCategoryEntries(category.key, !isAllSelected); }} aria-label={isAllSelected ? `Снять все ${category.label}` : `Выбрать все ${category.label}`} className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition-colors ${isAllSelected ? "border-[#d91f2e] bg-[#d91f2e] text-white" : isNoneSelected ? "border-[#c8c0b9] bg-white" : "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]"}`}>
+                                {isAllSelected && (<Icon className="h-3 w-3"><path d="m5 12 4 4 10-10" /></Icon>)}
+                                {!isAllSelected && !isNoneSelected && (<span className="h-0.5 w-2.5 rounded bg-[#d91f2e]" />)}
                               </button>
-
-                              <Icon
-                                className={`h-4 w-4 shrink-0 text-[#8e8680] transition-transform ${
-                                  isExpanded ? "rotate-180" : ""
-                                }`}
-                              >
-                                <path d="m7 10 5 5 5-5" />
-                              </Icon>
+                              <Icon className={`h-4 w-4 shrink-0 text-[#8e8680] transition-transform ${isExpanded ? "rotate-180" : ""}`}><path d="m7 10 5 5 5-5" /></Icon>
                             </div>
 
                             {isExpanded && (
-                              <div className="border-t border-[#eee9e5] bg-[#faf8f6] px-3 py-2">
+                              <div className="border-t border-[#eee9e5] bg-[#faf8f6] px-2 py-1.5">
                                 {entries.length === 0 ? (
-                                  <p className="px-1 py-2 text-xs text-[#918983]">
-                                    Нет редакций в этой категории
-                                  </p>
+                                  <p className="px-1 py-1.5 text-[11px] text-[#918983]">Нет редакций в этой категории</p>
                                 ) : (
                                   <ul className="flex flex-col">
                                     {entries.map((entry) => {
-                                      const isSelected =
-                                        selectedSiteEntries.has(entry.id);
+                                      const isSelected = selectedSiteEntries.has(entry.id);
                                       return (
                                         <li key={entry.id}>
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              toggleSiteEntry(entry.id)
-                                            }
-                                            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-[#f1ece7]"
-                                          >
-                                            <span
-                                              className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[11px] font-black text-white"
-                                              style={{
-                                                backgroundColor:
-                                                  entry.editorialColor,
-                                              }}
-                                            >
-                                              {entry.editorialMark}
-                                            </span>
+                                          <button type="button" onClick={() => toggleSiteEntry(entry.id)} className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-[#f1ece7]">
+                                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[10px] font-black text-white" style={{ backgroundColor: entry.editorialColor }}>{entry.editorialMark}</span>
                                             <span className="min-w-0 flex-1">
-                                              <span className="block truncate text-sm font-semibold">
-                                                {entry.editorial}
-                                              </span>
-                                              <span className="mt-0.5 block truncate text-[11px] text-[#918983]">
-                                                {entry.url}
-                                              </span>
+                                              <span className="block truncate text-xs font-semibold">{entry.editorial}</span>
+                                              <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{entry.url}</span>
                                             </span>
-                                            <span
-                                              className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
-                                                isSelected
-                                                  ? "border-[#d91f2e] bg-[#d91f2e] text-white"
-                                                  : "border-[#c8c0b9] bg-white"
-                                              }`}
-                                            >
-                                              {isSelected && (
-                                                <Icon className="h-3 w-3">
-                                                  <path d="m5 12 4 4 10-10" />
-                                                </Icon>
-                                              )}
+                                            <span className={`grid h-4.5 w-4.5 shrink-0 place-items-center rounded border ${isSelected ? "border-[#d91f2e] bg-[#d91f2e] text-white" : "border-[#c8c0b9] bg-white"}`}>
+                                              {isSelected && (<Icon className="h-2.5 w-2.5"><path d="m5 12 4 4 10-10" /></Icon>)}
                                             </span>
                                           </button>
                                         </li>
@@ -1873,113 +912,44 @@ export default function App() {
 
               {sourcesTab === "editorials" && (
                 <section aria-labelledby="editorials-heading">
-                  <QuickSearch
-                    value={editorialSearch}
-                    onChange={setEditorialSearch}
-                    placeholder="Поиск по названию редакции…"
-                    count={filteredEditorialItems.length}
-                    total={allEditorialIds.length}
-                  />
-
-                  <div className="mb-3 flex items-center justify-between gap-3">
+                  <QuickSearch value={editorialSearch} onChange={setEditorialSearch} placeholder="Поиск по названию редакции…" count={filteredEditorialItems.length} total={allEditorialIds.length} />
+                  <div className="mb-2.5 flex items-center justify-between gap-3">
                     <div>
-                      <h3
-                        id="editorials-heading"
-                        className="flex items-center gap-2 text-sm font-extrabold tracking-[0.04em] text-[#2a2725] uppercase"
-                      >
-                        <Icon className="h-4 w-4 text-[#d91f2e]">
-                          <path d="M4 5h16v14H4z" />
-                          <path d="M8 9h8M8 13h8M8 17h5" />
-                        </Icon>
+                      <h3 id="editorials-heading" className="flex items-center gap-1.5 text-xs font-extrabold tracking-[0.04em] text-[#2a2725] uppercase">
+                        <Icon className="h-3.5 w-3.5 text-[#d91f2e]"><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h8M8 17h5" /></Icon>
                         Редакции газет
                       </h3>
-                      <p className="mt-1 text-xs text-[#918983]">
-                        Выбрано {selectedEditorials.size} из{" "}
-                        {allEditorialIds.length}
-                      </p>
+                      <p className="mt-0.5 text-[11px] text-[#918983]">Выбрано {selectedEditorials.size} из {allEditorialIds.length}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={toggleAllEditorials}
-                      className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-3 py-1.5 text-xs font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]"
-                    >
-                      {allVisibleEditorialsSelected
-                        ? editorialSearch
-                          ? "Снять найденные"
-                          : "Снять все"
-                        : editorialSearch
-                          ? "Выбрать найденные"
-                          : "Выбрать все"}
+                    <button type="button" onClick={toggleAllEditorials} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
+                      {allVisibleEditorialsSelected ? (editorialSearch ? "Снять найденные" : "Снять все") : (editorialSearch ? "Выбрать найденные" : "Выбрать все")}
                     </button>
                   </div>
 
                   {filteredEditorialItems.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#d9d2cc] bg-white px-4 py-10 text-center">
-                      <p className="text-sm font-bold text-[#514c48]">
-                        Ничего не найдено
-                      </p>
-                      <p className="mt-1 text-xs text-[#918983]">
-                        Попробуйте изменить запрос — например, часть названия
-                        редакции.
-                      </p>
+                    <div className="rounded-xl border border-dashed border-[#d9d2cc] bg-white px-4 py-8 text-center">
+                      <p className="text-sm font-bold text-[#514c48]">Ничего не найдено</p>
+                      <p className="mt-1 text-xs text-[#918983]">Попробуйте изменить запрос.</p>
                     </div>
                   ) : (
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-1.5 sm:grid-cols-2">
                       {filteredEditorialItems.map((editorial) => {
-                        const state =
-                          editorialCheckState[editorial.id] ?? "none";
+                        const state = editorialCheckState[editorial.id] ?? "none";
                         const isAll = state === "all";
                         const isPartial = state === "partial";
-                        const isInEditorials = selectedEditorials.has(
-                          editorial.id,
-                        );
-                        const visualSelected =
-                          isAll || isPartial || isInEditorials;
+                        const isInEditorials = selectedEditorials.has(editorial.id);
+                        const visualSelected = isAll || isPartial || isInEditorials;
 
                         return (
-                          <button
-                            type="button"
-                            key={editorial.id}
-                            onClick={() => toggleEditorial(editorial.id)}
-                            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                              visualSelected
-                                ? "border-[#d9d1ca] bg-white"
-                                : "border-transparent bg-[#efebe7] opacity-55 hover:opacity-80"
-                            }`}
-                          >
-                            <span
-                              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black text-white"
-                              style={{ backgroundColor: editorial.color }}
-                            >
-                              {editorial.mark}
-                            </span>
+                          <button type="button" key={editorial.id} onClick={() => toggleEditorial(editorial.id)} className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all ${visualSelected ? "border-[#d9d1ca] bg-white" : "border-transparent bg-[#efebe7] opacity-55 hover:opacity-80"}`}>
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black text-white" style={{ backgroundColor: editorial.color }}>{editorial.mark}</span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-extrabold">
-                                {editorial.name}
-                              </span>
-                              <span className="mt-0.5 block truncate text-[11px] text-[#918983]">
-                                {isPartial
-                                  ? "Выбрана часть каналов"
-                                  : "Редакция газеты"}
-                              </span>
+                              <span className="block truncate text-xs font-extrabold">{editorial.name}</span>
+                              <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{isPartial ? "Часть каналов" : "Редакция газеты"}</span>
                             </span>
-                            <span
-                              className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
-                                isAll
-                                  ? "border-[#d91f2e] bg-[#d91f2e] text-white"
-                                  : isPartial
-                                    ? "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]"
-                                    : "border-[#c8c0b9] bg-white"
-                              }`}
-                            >
-                              {isAll && (
-                                <Icon className="h-3 w-3">
-                                  <path d="m5 12 4 4 10-10" />
-                                </Icon>
-                              )}
-                              {isPartial && (
-                                <span className="h-0.5 w-3 rounded bg-[#d91f2e]" />
-                              )}
+                            <span className={`grid h-4.5 w-4.5 shrink-0 place-items-center rounded border ${isAll ? "border-[#d91f2e] bg-[#d91f2e] text-white" : isPartial ? "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]" : "border-[#c8c0b9] bg-white"}`}>
+                              {isAll && (<Icon className="h-2.5 w-2.5"><path d="m5 12 4 4 10-10" /></Icon>)}
+                              {isPartial && (<span className="h-0.5 w-2.5 rounded bg-[#d91f2e]" />)}
                             </span>
                           </button>
                         );
@@ -1990,22 +960,9 @@ export default function App() {
               )}
             </div>
 
-            <div className="flex items-center justify-between border-t border-[#e2dcd6] bg-white px-5 py-4 sm:px-7">
-              <p className="text-xs font-semibold text-[#817a74]">
-                Выбрано:{" "}
-                <span className="font-extrabold text-[#292522]">
-                  {selectedSiteEntries.size} каналов,{" "}
-                  {selectedEditorials.size} редакций
-                </span>
-              </p>
-              <button
-                type="button"
-                disabled={nothingSelected}
-                onClick={() => setSourcesOpen(false)}
-                className="cursor-pointer rounded-xl bg-[#d91f2e] px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-[#bd1725] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Применить
-              </button>
+            <div className="flex items-center justify-between border-t border-[#e2dcd6] bg-white px-4 py-3 sm:px-6">
+              <p className="text-[11px] font-semibold text-[#817a74]">Выбрано: <span className="font-extrabold text-[#292522]">{selectedSiteEntries.size} каналов, {selectedEditorials.size} редакций</span></p>
+              <button type="button" disabled={nothingSelected} onClick={() => setSourcesOpen(false)} className="cursor-pointer rounded-lg bg-[#d91f2e] px-4 py-2.5 text-xs font-extrabold text-white transition-colors hover:bg-[#bd1725] disabled:cursor-not-allowed disabled:opacity-40">Применить</button>
             </div>
           </section>
         </div>
