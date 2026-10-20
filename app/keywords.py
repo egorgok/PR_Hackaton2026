@@ -28,14 +28,14 @@ def _normalize_token(token: str) -> str:
     return token
 
 
-def extract_keywords(text: str) -> list[str]:
+def extract_keywords(text: str, limit: int = 20) -> list[str]:
     tokens = [_normalize_token(token) for token in TOKEN_RE.findall(text)]
     tokens = [token for token in tokens if token not in STOP_WORDS and not token.isdigit()]
     counts: dict[str, int] = {}
     for token in tokens:
         counts[token] = counts.get(token, 0) + 1
     ranked = sorted(counts, key=lambda token: (-counts[token], -len(token), token))
-    return ranked[:20]
+    return ranked[:limit]
 
 
 def lexical_match(text: str, keywords: list[str]) -> bool:

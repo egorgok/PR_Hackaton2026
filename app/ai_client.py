@@ -120,13 +120,16 @@ class OpenAICompatibleClient(AIClassifier):
 
     async def expand_query(self, query: str) -> list[str]:
         result = await self._chat_json(
-            "Расшири русский поисковый запрос. Верни только JSON-массив строк. "
-            "Добавь синонимы, словоформы и естественные перефразы, без несвязанных слов. "
+            "Расшири русский поисковый запрос максимально полно. Верни только JSON-массив строк. "
+            "Сгенерируй не менее 30 и до 100 вариантов: синонимы, словоформы, разговорные "
+            "формулировки, журналистские клише, сокращения, близкие термины и естественные "
+            "перефразы. Разделяй варианты по смысловым группам запроса и не добавляй "
+            "несвязанные темы. Обязательно сохрани исходные понятия. "
             f"Запрос: {query[:2000]}"
         )
         if not isinstance(result, list) or not all(isinstance(item, str) for item in result):
             raise ValueError("AI вернул неподдерживаемое расширение запроса")
-        return list(dict.fromkeys(result))[:40]
+        return list(dict.fromkeys(result))[:100]
 
     async def classify_detailed(
         self, query: str, candidates: list[dict[str, str]]

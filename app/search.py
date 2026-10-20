@@ -60,7 +60,11 @@ class SearchService:
         if self.ai_client.enabled:
             try:
                 expanded = await self.ai_client.expand_query(request.text)
-                keywords = list(dict.fromkeys(keywords + extract_keywords(" ".join(expanded))))
+                keywords = list(
+                    dict.fromkeys(
+                        keywords + extract_keywords(" ".join(expanded), limit=100)
+                    )
+                )
             except Exception:
                 pass
         source_states = [
@@ -159,9 +163,8 @@ class SearchService:
                 if lexical_match(candidate.title + " " + candidate.text, keywords)
             ]
             if self.ai_client.enabled:
-                preselected = [
-                    candidate for candidate, _ in lexical
-                ][: self.settings.max_candidates_per_source]
+                # AI must see candidates missed by exact lexical matching too.
+                preselected = candidates[: self.settings.max_candidates_per_source]
                 try:
                     async with ai_semaphore:
                         decisions = await self.ai_client.classify_detailed(
