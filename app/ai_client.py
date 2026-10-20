@@ -118,15 +118,38 @@ class OpenAICompatibleClient(AIClassifier):
     def enabled(self) -> bool:
         return bool(self.api_key)
 
-    async def classify(self, query: str, candidates: list[dict[str, str]]) -> set[str]:
+    async def expand_query(self, query: str) -> list[str]:
+        result = await self._chat_json(
+            "Расшири русский поисковый запрос. Верни только JSON-массив строк. "
+            "Добавь синонимы, словоформы и естественные перефразы, без несвязанных слов. "
+            f"Запрос: {query[:2000]}"
+        )
+        if not isinstance(result, list) or not all(isinstance(item, str) for item in result):
+            raise ValueError("AI вернул неподдерживаемое расширение запроса")
+        return list(dict.fromkeys(result))[:40]
+
+    async def classify_detailed(
+        self, query: str, candidates: list[dict[str, str]]
+    ) -> list[YandexGPTDecision]:
+        if not candidates:
+            return []
         prompt_data = [{"id": item["id"], "text": item["text"][:2500]} for item in candidates]
-        prompt = (
-            "Определи, какие публикации относятся к запросу. Учитывай перефразирование "
-            "и тот же факт, но отклоняй совпадение только по общим словам. "
-            'Верни только JSON вида {"relevant_ids":["id"]}. '
+        result = await self._chat_json(
+            "Проверь смысловую релевантность публикаций запросу. Верни только JSON-массив "
+            'объектов вида {"id":"1","relevant":true,"confidence":0.9,'
+            '"reason":"...","matched_concepts":["..."]}. '
+            "Учитывай перефразирование, но отклоняй совпадение только по общим словам. "
             f"Запрос: {query[:2000]}\nПубликации: "
             f"{json.dumps(prompt_data, ensure_ascii=False)}"
         )
+        if not isinstance(result, list):
+            raise ValueError("AI вернул не массив классификации")
+        return [YandexGPTDecision.model_validate(item) for item in result]
+
+    async def classify(self, query: str, candidates: list[dict[str, str]]) -> set[str]:
+        return {item.id for item in await self.classify_detailed(query, candidates) if item.relevant}
+
+    async def _chat_json(self, prompt: str) -> object:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
                 f"{self.base_url}/chat/completions",
@@ -138,7 +161,6 @@ class OpenAICompatibleClient(AIClassifier):
                     "model": self.model,
                     "temperature": 0,
                     "stream": False,
-                    "response_format": {"type": "json_object"},
                     "messages": [
                         {
                             "role": "system",
@@ -150,7 +172,11 @@ class OpenAICompatibleClient(AIClassifier):
             )
             response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
-        return set(self._parse_ids(content))
+        cleaned = content.strip().replace("```json", "").replace("```", "").strip()
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"AI вернул неподдерживаемый JSON: {content[:300]!r}") from exc
 
     @staticmethod
     def _parse_ids(content: str) -> list[str]:

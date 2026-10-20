@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from app.gigachat import GigaChat
-from app.ai_client import YandexGPTClient
+from app.ai_client import OpenAICompatibleClient
 from app.jobs import JobManager
 from app.keywords import extract_keywords, lexical_match
 from app.models import Platform, Publication, SearchRequest
@@ -42,11 +42,11 @@ class SearchService:
         self.jobs = jobs
         self.settings = settings
         self.gigachat = GigaChat(settings)
-        self.yandexgpt = YandexGPTClient(
-            settings.yandexgpt_api_key,
-            settings.yandexgpt_base_url,
-            settings.yandexgpt_model_uri,
-            settings.yandexgpt_timeout_seconds,
+        self.ai_client = OpenAICompatibleClient(
+            settings.ai_api_key,
+            settings.ai_base_url,
+            settings.ai_model,
+            settings.ai_timeout_seconds,
         )
         self._gigachat_unavailable = False
 
@@ -57,9 +57,9 @@ class SearchService:
         owner_id: str,
     ):
         keywords = extract_keywords(request.text)
-        if self.yandexgpt.enabled and self.yandexgpt.model:
+        if self.ai_client.enabled:
             try:
-                expanded = await self.yandexgpt.expand_query(request.text)
+                expanded = await self.ai_client.expand_query(request.text)
                 keywords = list(dict.fromkeys(keywords + extract_keywords(" ".join(expanded))))
             except Exception:
                 pass
@@ -85,7 +85,7 @@ class SearchService:
                 "sources": selected,
                 "source_states": source_states,
                 "ai_mode": (
-                    "yandexgpt_pending" if self.yandexgpt.enabled
+                    "ai_pending" if self.ai_client.enabled
                     else "gigachat_pending" if self.gigachat.enabled
                     else "lexical_only"
                 ),
@@ -158,13 +158,13 @@ class SearchService:
                 for candidate in candidates
                 if lexical_match(candidate.title + " " + candidate.text, keywords)
             ]
-            if self.yandexgpt.enabled and self.yandexgpt.model:
+            if self.ai_client.enabled:
                 preselected = [
                     candidate for candidate, _ in lexical
                 ][: self.settings.max_candidates_per_source]
                 try:
                     async with ai_semaphore:
-                        decisions = await self.yandexgpt.classify_detailed(
+                        decisions = await self.ai_client.classify_detailed(
                             request.text,
                             [
                                 {"id": str(candidate_index),
@@ -179,7 +179,7 @@ class SearchService:
                         if str(candidate_index) in decision_by_id
                         and decision_by_id[str(candidate_index)].relevant
                     ]
-                    await self.jobs.mutate(job_id, lambda job: job.update(ai_mode="yandexgpt"))
+                    await self.jobs.mutate(job_id, lambda job: job.update(ai_mode="custom_ai"))
                 except Exception as exc:
                     relevant = [(candidate, "lexical", None) for candidate, _ in lexical]
                     await self.jobs.mutate(
@@ -187,7 +187,7 @@ class SearchService:
                         lambda job: (
                             job.update(ai_mode="lexical_fallback", ai_error=type(exc).__name__),
                             job["errors"].append(
-                                f"YandexGPT недоступен ({type(exc).__name__}); "
+                                f"AI-провайдер недоступен ({type(exc).__name__}); "
                                 "для задания включен лексический отбор."
                             ),
                         ),
