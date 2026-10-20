@@ -29,7 +29,27 @@ function Icon({ children, className = "h-5 w-5" }: IconProps) {
   );
 }
 
-type SiteCategory = "site" | "tg" | "vk" | "ok" | "dzen" | "max";
+/* ===== Платформы ===== */
+type SiteCategory = string; // ключ платформы
+type BaseCategory = "site" | "tg" | "vk" | "ok" | "dzen" | "max";
+
+type CategoryDef = {
+  key: SiteCategory;
+  label: string;
+  hint: string;
+  color: string;
+  icon: ReactNode;
+  custom?: boolean;
+};
+
+const BASE_CATEGORIES: CategoryDef[] = [
+  { key: "site", label: "Сайты газет", hint: "Официальные сайты редакций", color: "#d91f2e", icon: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>) },
+  { key: "tg", label: "ТГ", hint: "Telegram-каналы", color: "#2aabee", icon: <path d="m21 4-4 16-6-4-4 4v-6L3 10z" /> },
+  { key: "vk", label: "ВК", hint: "Сообщества ВКонтакте", color: "#0077ff", icon: <path d="M4 7h3l2 6 3-6h3l-4 10H8z" /> },
+  { key: "ok", label: "ОК", hint: "Группы Одноклассники", color: "#ee8208", icon: (<><circle cx="12" cy="9" r="3" /><path d="M6 20c1.5-3 4-4 6-4s4.5 1 6 4" /></>) },
+  { key: "dzen", label: "Дзен", hint: "Каналы на Дзене", color: "#191919", icon: <path d="M12 3c0 6-3 9-9 9 6 0 9 3 9 9 0-6 3-9 9-9-6 0-9-3-9-9Z" /> },
+  { key: "max", label: "МАХ", hint: "Каналы в МАХ", color: "#7c3aed", icon: (<><circle cx="12" cy="12" r="9" /><path d="m8 15 3-6 3 6M9 13h6" /></>) },
+];
 
 const sources = [
   {
@@ -130,12 +150,8 @@ const PERIOD_DAYS_BY_KEY: Record<PeriodKey, number | undefined> =
 
 type RawRow = {
   editorial: string;
-  site?: string;
-  tg?: string;
-  vk?: string;
-  ok?: string;
-  dzen?: string;
-  max?: string;
+  custom?: boolean;
+  [platform: string]: string | boolean | undefined;
 };
 
 const rawRows: RawRow[] = [
@@ -189,93 +205,77 @@ const rawRows: RawRow[] = [
   { editorial: "Эхо Турана", site: "exoturana.ru", tg: "https://t.me/exoturana24", vk: "https://vk.com/public217364898", ok: "https://ok.ru/profile/578365811121", dzen: "https://dzen.ru/id/679338ca67ebbf6b1f42373a", max: "https://max.ru/id2422001817_gos" },
 ];
 
-const SITE_CATEGORIES: Array<{
-  key: SiteCategory;
-  label: string;
-  hint: string;
-  color: string;
-  icon: ReactNode;
-}> = [
-  { key: "site", label: "Сайты газет", hint: "Официальные сайты редакций", color: "#d91f2e", icon: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>) },
-  { key: "tg", label: "ТГ", hint: "Telegram-каналы", color: "#2aabee", icon: <path d="m21 4-4 16-6-4-4 4v-6L3 10z" /> },
-  { key: "vk", label: "ВК", hint: "Сообщества ВКонтакте", color: "#0077ff", icon: <path d="M4 7h3l2 6 3-6h3l-4 10H8z" /> },
-  { key: "ok", label: "ОК", hint: "Группы Одноклассники", color: "#ee8208", icon: (<><circle cx="12" cy="9" r="3" /><path d="M6 20c1.5-3 4-4 6-4s4.5 1 6 4" /></>) },
-  { key: "dzen", label: "Дзен", hint: "Каналы на Дзене", color: "#191919", icon: <path d="M12 3c0 6-3 9-9 9 6 0 9 3 9 9 0-6 3-9 9-9-6 0-9-3-9-9Z" /> },
-  { key: "max", label: "МАХ", hint: "Каналы в МАХ", color: "#7c3aed", icon: (<><circle cx="12" cy="12" r="9" /><path d="m8 15 3-6 3 6M9 13h6" /></>) },
-];
-
-// Карта платформы: ключ -> { label, color }
-const PLATFORM_META: Record<SiteCategory, { label: string; color: string }> = {
-  site: { label: "Сайт", color: "#d91f2e" },
-  tg: { label: "ТГ", color: "#2aabee" },
-  vk: { label: "ВК", color: "#0077ff" },
-  ok: { label: "ОК", color: "#ee8208" },
-  dzen: { label: "Дзен", color: "#191919" },
-  max: { label: "МАХ", color: "#7c3aed" },
-};
-
-type SiteEntry = {
-  id: string;
-  category: SiteCategory;
-  editorial: string;
-  url: string;
-  editorialColor: string;
-  editorialMark: string;
-};
-
 const EDITORIAL_COLORS = ["#d91f2e","#123c32","#171717","#9d7b4f","#31599b","#c93434","#fc3f1d","#4285f4","#191919","#e12828","#0f766e","#7c3aed"];
-
-const editorialMeta: Record<string, { color: string; mark: string }> = (() => {
-  const map: Record<string, { color: string; mark: string }> = {};
-  rawRows.forEach((row, index) => {
-    map[row.editorial] = { color: EDITORIAL_COLORS[index % EDITORIAL_COLORS.length], mark: row.editorial.trim().charAt(0).toUpperCase() };
-  });
-  return map;
-})();
-
-const siteEntriesByCategory: Record<SiteCategory, SiteEntry[]> = (() => {
-  const result: Record<SiteCategory, SiteEntry[]> = { site: [], tg: [], vk: [], ok: [], dzen: [], max: [] };
-  const keys: SiteCategory[] = ["site", "tg", "vk", "ok", "dzen", "max"];
-  rawRows.forEach((row) => {
-    keys.forEach((key) => {
-      const url = row[key];
-      if (!url) return;
-      const meta = editorialMeta[row.editorial];
-      result[key].push({ id: `${key}::${row.editorial}`, category: key, editorial: row.editorial, url, editorialColor: meta?.color ?? "#d91f2e", editorialMark: meta?.mark ?? "?" });
-    });
-  });
-  return result;
-})();
-
-const entriesByEditorial: Record<string, SiteEntry[]> = (() => {
-  const map: Record<string, SiteEntry[]> = {};
-  Object.values(siteEntriesByCategory).forEach((entries) => {
-    entries.forEach((entry) => {
-      if (!map[entry.editorial]) map[entry.editorial] = [];
-      map[entry.editorial].push(entry);
-    });
-  });
-  return map;
-})();
-
-const allSiteEntryIds = Object.values(siteEntriesByCategory).flat().map((entry) => entry.id);
-
-type EditorialItem = { id: string; name: string; mark: string; color: string };
-
-const editorialItems: EditorialItem[] = rawRows.map((row, index) => ({
-  id: `editorial-${row.editorial}`,
-  name: row.editorial,
-  mark: row.editorial.trim().charAt(0).toUpperCase(),
-  color: EDITORIAL_COLORS[index % EDITORIAL_COLORS.length],
-}));
-
-const allEditorialIds = editorialItems.map((item) => item.id);
 
 type SourcesTab = "sites" | "editorials";
 type CheckState = "none" | "partial" | "all";
 
 function normalize(value: string) {
   return value.toLowerCase().replace(/ё/g, "е").trim();
+}
+
+/* ===== Cookies ===== */
+function setCookie(name: string, value: string, days = 365) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1") + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+type CustomCategory = {
+  key: string;
+  label: string;
+  hint: string;
+  color: string;
+};
+
+type PersistedState = {
+  customRows: RawRow[];
+  customCategories: CustomCategory[];
+  selectedSiteIds: string[];
+  selectedEditorialIds: string[];
+};
+
+const COOKIE_NAME = "fakt_custom_sources";
+
+function readPersisted(): PersistedState | null {
+  try {
+    const raw = getCookie(COOKIE_NAME);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    const customRows = Array.isArray(parsed.customRows)
+      ? parsed.customRows
+          .filter((r): r is RawRow => !!r && typeof r.editorial === "string")
+          .map((r) => ({ ...r, custom: true }))
+      : [];
+    return {
+      customRows,
+      customCategories: Array.isArray(parsed.customCategories)
+        ? parsed.customCategories.filter(
+            (c) => c && typeof c.key === "string" && typeof c.label === "string",
+          )
+        : [],
+      selectedSiteIds: Array.isArray(parsed.selectedSiteIds)
+        ? parsed.selectedSiteIds.filter((x): x is string => typeof x === "string")
+        : [],
+      selectedEditorialIds: Array.isArray(parsed.selectedEditorialIds)
+        ? parsed.selectedEditorialIds.filter((x): x is string => typeof x === "string")
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePersisted(state: PersistedState) {
+  try {
+    setCookie(COOKIE_NAME, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
 }
 
 function QuickSearch({ value, onChange, placeholder, count, total }: { value: string; onChange: (next: string) => void; placeholder: string; count: number; total: number }) {
@@ -306,7 +306,28 @@ function FilterSelect({ label, icon, value, onChange, children }: { label: strin
   );
 }
 
-const ALL_SITE_ENTRIES_FLAT = Object.values(siteEntriesByCategory).flat();
+function escapeCsv(value: string | number) {
+  const str = String(value ?? "");
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+type SiteEntry = {
+  id: string;
+  category: SiteCategory;
+  editorial: string;
+  url: string;
+  editorialColor: string;
+  editorialMark: string;
+  custom?: boolean;
+};
+
+type EditorialItem = {
+  id: string;
+  name: string;
+  mark: string;
+  color: string;
+  custom?: boolean;
+};
 
 export default function App() {
   const [query, setQuery] = useState("В центре Москвы перекроют улицы");
@@ -325,12 +346,180 @@ export default function App() {
   const [editorialSearch, setEditorialSearch] = useState("");
   const [faqOpen, setFaqOpen] = useState<Set<number>>(() => new Set());
 
-  const [selectedSiteEntries, setSelectedSiteEntries] = useState(() => new Set(allSiteEntryIds));
-  const [selectedEditorials, setSelectedEditorials] = useState(() => new Set(allEditorialIds));
+  const [intro, setIntro] = useState(true);
+  const [examplesHidden, setExamplesHidden] = useState(false);
+
+  const [customRows, setCustomRows] = useState<RawRow[]>([]);
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+
+  // Форма добавления редакции (во вкладке «Редакции»)
+  const [editorialFormOpen, setEditorialFormOpen] = useState(false);
+  const [editorialFormName, setEditorialFormName] = useState("");
+  const [editorialFormPlatforms, setEditorialFormPlatforms] = useState<Set<SiteCategory>>(
+    () => new Set(["site"]),
+  );
+  const [editorialFormUrl, setEditorialFormUrl] = useState("");
+  const [editorialFormError, setEditorialFormError] = useState("");
+
+  const [selectedSiteEntries, setSelectedSiteEntries] = useState<Set<string>>(() => new Set());
+  const [selectedEditorials, setSelectedEditorials] = useState<Set<string>>(() => new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<SiteCategory>>(() => new Set());
+  const [hydrated, setHydrated] = useState(false);
+  const [restored, setRestored] = useState(false);
 
   const syncingRef = useRef<"none" | "from-editorials" | "from-sites">("none");
 
+  // ===== Категории (базовые + пользовательские) =====
+  const SITE_CATEGORIES = useMemo<CategoryDef[]>(
+    () => [
+      ...BASE_CATEGORIES,
+      ...customCategories.map((c) => ({
+        key: c.key,
+        label: c.label,
+        hint: c.hint,
+        color: c.color,
+        custom: true,
+        icon: <path d="M4 7h16v10H4zM4 12h16" />,
+      })),
+    ],
+    [customCategories],
+  );
+
+  const PLATFORM_META = useMemo<Record<string, { label: string; color: string }>>(() => {
+    const map: Record<string, { label: string; color: string }> = {};
+    SITE_CATEGORIES.forEach((c) => { map[c.key] = { label: c.label, color: c.color }; });
+    return map;
+  }, [SITE_CATEGORIES]);
+
+  const PLATFORM_KEYS = useMemo(() => SITE_CATEGORIES.map((c) => c.key), [SITE_CATEGORIES]);
+
+  // ===== Производные данные =====
+  const effectiveRows = useMemo(() => [...rawRows, ...customRows], [customRows]);
+
+  const editorialMeta = useMemo(() => {
+    const map: Record<string, { color: string; mark: string }> = {};
+    effectiveRows.forEach((row, index) => {
+      map[row.editorial] = { color: EDITORIAL_COLORS[index % EDITORIAL_COLORS.length], mark: row.editorial.trim().charAt(0).toUpperCase() };
+    });
+    return map;
+  }, [effectiveRows]);
+
+  const siteEntriesByCategory = useMemo(() => {
+    const result: Record<string, SiteEntry[]> = {};
+    PLATFORM_KEYS.forEach((key) => { result[key] = []; });
+    effectiveRows.forEach((row) => {
+      PLATFORM_KEYS.forEach((key) => {
+        const url = row[key];
+        if (typeof url !== "string" || !url) return;
+        const meta = editorialMeta[row.editorial];
+        if (!result[key]) result[key] = [];
+        result[key].push({
+          id: `${key}::${row.editorial}`,
+          category: key,
+          editorial: row.editorial,
+          url,
+          editorialColor: meta?.color ?? "#d91f2e",
+          editorialMark: meta?.mark ?? "?",
+          custom: Boolean(row.custom),
+        });
+      });
+    });
+    return result;
+  }, [effectiveRows, editorialMeta, PLATFORM_KEYS]);
+
+  const entriesByEditorial = useMemo(() => {
+    const map: Record<string, SiteEntry[]> = {};
+    Object.values(siteEntriesByCategory).forEach((entries) => {
+      entries.forEach((entry) => {
+        if (!map[entry.editorial]) map[entry.editorial] = [];
+        map[entry.editorial].push(entry);
+      });
+    });
+    return map;
+  }, [siteEntriesByCategory]);
+
+  const allSiteEntryIds = useMemo(
+    () => Object.values(siteEntriesByCategory).flat().map((entry) => entry.id),
+    [siteEntriesByCategory],
+  );
+
+  const editorialItems = useMemo<EditorialItem[]>(
+    () => effectiveRows.map((row, index) => ({
+      id: `editorial-${row.editorial}`,
+      name: row.editorial,
+      mark: row.editorial.trim().charAt(0).toUpperCase(),
+      color: EDITORIAL_COLORS[index % EDITORIAL_COLORS.length],
+      custom: Boolean(row.custom),
+    })),
+    [effectiveRows],
+  );
+
+  const allEditorialIds = useMemo(() => editorialItems.map((item) => item.id), [editorialItems]);
+
+  // Ключи для эффектов — чтобы реагировать на изменение состава, а не только длины
+  const allSiteEntryIdsKey = useMemo(
+    () => allSiteEntryIds.slice().sort().join("|"),
+    [allSiteEntryIds],
+  );
+  const allEditorialIdsKey = useMemo(
+    () => allEditorialIds.slice().sort().join("|"),
+    [allEditorialIds],
+  );
+
+  // ===== Гидратация из cookies =====
+  // Шаг 1: восстанавливаем добавленные платформы и редакции.
+  // Делаем это ДО инициализации выбора, чтобы списки id уже включали пользовательские записи.
+  useEffect(() => {
+    const persisted = readPersisted();
+    if (persisted) {
+      if (persisted.customRows.length > 0) setCustomRows(persisted.customRows);
+      if (persisted.customCategories.length > 0) setCustomCategories(persisted.customCategories);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Шаг 2: инициализируем выбор. Зависим от фактического набора id, а не от длины.
+  useEffect(() => {
+    if (!hydrated) return;
+
+    const persisted = readPersisted();
+    const savedSiteIds = persisted?.selectedSiteIds ?? [];
+    const savedEditorialIds = persisted?.selectedEditorialIds ?? [];
+
+    // Каналы: сохранённые, если валидны, иначе — ВСЕ (первый запуск / всё устарело).
+    const validSiteIds = savedSiteIds.filter((id) => allSiteEntryIds.includes(id));
+    if (validSiteIds.length > 0) {
+      setSelectedSiteEntries(new Set(validSiteIds));
+    } else {
+      setSelectedSiteEntries(new Set(allSiteEntryIds));
+    }
+
+    // Редакции: аналогично.
+    const validEditorialIds = savedEditorialIds.filter((id) => allEditorialIds.includes(id));
+    if (validEditorialIds.length > 0) {
+      setSelectedEditorials(new Set(validEditorialIds));
+    } else {
+      setSelectedEditorials(new Set(allEditorialIds));
+    }
+
+    // Только теперь разрешаем запись в cookies.
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, allSiteEntryIdsKey, allEditorialIdsKey]);
+
+  // Шаг 3: сохраняем всё (добавленное + выбранное) при любом изменении,
+  // но только после того, как восстановление реально произошло.
+  useEffect(() => {
+    if (!hydrated || !restored) return;
+    writePersisted({
+      customRows,
+      customCategories,
+      selectedSiteIds: Array.from(selectedSiteEntries),
+      selectedEditorialIds: Array.from(selectedEditorials),
+    });
+  }, [hydrated, restored, customRows, customCategories, selectedSiteEntries, selectedEditorials]);
+
+  // ===== Синхронизация =====
   useEffect(() => {
     if (syncingRef.current === "from-sites") return;
     syncingRef.current = "from-editorials";
@@ -347,7 +536,7 @@ export default function App() {
       return changed ? next : currentEntries;
     });
     syncingRef.current = "none";
-  }, [selectedEditorials]);
+  }, [selectedEditorials, entriesByEditorial]);
 
   const editorialCheckState = useMemo(() => {
     const map: Record<string, CheckState> = {};
@@ -359,28 +548,50 @@ export default function App() {
       map[id] = selected === 0 ? "none" : selected === total ? "all" : "partial";
     });
     return map;
-  }, [selectedSiteEntries]);
+  }, [selectedSiteEntries, entriesByEditorial]);
 
   const normalizedSiteSearch = normalize(siteSearch);
   const filteredSiteEntriesByCategory = useMemo(() => {
-    const result: Record<SiteCategory, SiteEntry[]> = { site: [], tg: [], vk: [], ok: [], dzen: [], max: [] };
-    (Object.keys(siteEntriesByCategory) as SiteCategory[]).forEach((key) => {
-      const entries = siteEntriesByCategory[key];
-      result[key] = normalizedSiteSearch ? entries.filter((entry) => normalize(entry.editorial).includes(normalizedSiteSearch) || normalize(entry.url).includes(normalizedSiteSearch)) : entries;
+    const result: Record<string, SiteEntry[]> = {};
+    PLATFORM_KEYS.forEach((key) => {
+      const entries = siteEntriesByCategory[key] ?? [];
+      result[key] = normalizedSiteSearch
+        ? entries.filter((entry) => normalize(entry.editorial).includes(normalizedSiteSearch) || normalize(entry.url).includes(normalizedSiteSearch))
+        : entries;
     });
     return result;
-  }, [normalizedSiteSearch]);
+  }, [siteEntriesByCategory, normalizedSiteSearch, PLATFORM_KEYS]);
 
-  const visibleCategories = useMemo(() => SITE_CATEGORIES.filter((category) => filteredSiteEntriesByCategory[category.key].length > 0), [filteredSiteEntriesByCategory]);
+  const visibleCategories = useMemo(
+    () => SITE_CATEGORIES.filter((category) => (filteredSiteEntriesByCategory[category.key] ?? []).length > 0),
+    [SITE_CATEGORIES, filteredSiteEntriesByCategory],
+  );
 
-  const matchedSiteEntriesCount = useMemo(() => visibleCategories.reduce((sum, category) => sum + filteredSiteEntriesByCategory[category.key].length, 0), [visibleCategories, filteredSiteEntriesByCategory]);
+  const matchedSiteEntriesCount = useMemo(
+    () => visibleCategories.reduce((sum, category) => sum + (filteredSiteEntriesByCategory[category.key] ?? []).length, 0),
+    [visibleCategories, filteredSiteEntriesByCategory],
+  );
 
   const normalizedEditorialSearch = normalize(editorialSearch);
-  const filteredEditorialItems = useMemo(() => normalizedEditorialSearch ? editorialItems.filter((item) => normalize(item.name).includes(normalizedEditorialSearch)) : editorialItems, [normalizedEditorialSearch]);
+  const filteredEditorialItems = useMemo(
+    () => normalizedEditorialSearch ? editorialItems.filter((item) => normalize(item.name).includes(normalizedEditorialSearch)) : editorialItems,
+    [editorialItems, normalizedEditorialSearch],
+  );
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (query.trim()) setSearchedQuery(query.trim());
+    if (query.trim()) {
+      setSearchedQuery(query.trim());
+      setIntro(false);
+      setExamplesHidden(true);
+    }
+  };
+
+  const handleExampleClick = (example: string) => {
+    setQuery(example);
+    setSearchedQuery(example);
+    setIntro(false);
+    setExamplesHidden(true);
   };
 
   const toggleCategoryExpanded = (key: SiteCategory) => {
@@ -411,12 +622,12 @@ export default function App() {
   };
 
   const setCategoryEntries = (key: SiteCategory, value: boolean) => {
-    const ids = filteredSiteEntriesByCategory[key].map((entry) => entry.id);
+    const ids = (filteredSiteEntriesByCategory[key] ?? []).map((entry) => entry.id);
     setSelectedSiteEntries((current) => { const next = new Set(current); if (value) ids.forEach((id) => next.add(id)); else ids.forEach((id) => next.delete(id)); return next; });
   };
 
   const setAllVisibleSiteEntries = (value: boolean) => {
-    const ids = visibleCategories.flatMap((category) => filteredSiteEntriesByCategory[category.key].map((entry) => entry.id));
+    const ids = visibleCategories.flatMap((category) => (filteredSiteEntriesByCategory[category.key] ?? []).map((entry) => entry.id));
     setSelectedSiteEntries((current) => { const next = new Set(current); if (value) ids.forEach((id) => next.add(id)); else ids.forEach((id) => next.delete(id)); return next; });
   };
 
@@ -437,11 +648,99 @@ export default function App() {
     }
   };
 
-  const allVisibleSiteEntriesSelected = matchedSiteEntriesCount > 0 && visibleCategories.every((category) => filteredSiteEntriesByCategory[category.key].every((entry) => selectedSiteEntries.has(entry.id)));
+  const allVisibleSiteEntriesSelected = matchedSiteEntriesCount > 0 && visibleCategories.every((category) => (filteredSiteEntriesByCategory[category.key] ?? []).every((entry) => selectedSiteEntries.has(entry.id)));
   const allVisibleEditorialsSelected = filteredEditorialItems.length > 0 && filteredEditorialItems.every((item) => selectedEditorials.has(item.id));
   const totalSelected = selectedSiteEntries.size + selectedEditorials.size;
   const totalAvailable = allSiteEntryIds.length + allEditorialIds.length;
   const nothingSelected = totalSelected === 0;
+
+  /* ===== Добавление редакции (вкладка «Редакции») ===== */
+  const handleAddEditorial = () => {
+    const name = editorialFormName.trim();
+    const url = editorialFormUrl.trim();
+    if (!name || !url) {
+      setEditorialFormError("Заполните название и ссылку.");
+      return;
+    }
+    if (editorialFormPlatforms.size === 0) {
+      setEditorialFormError("Выберите хотя бы одну платформу.");
+      return;
+    }
+
+    const platforms = Array.from(editorialFormPlatforms);
+
+    const existingIndex = customRows.findIndex((row) => row.editorial === name);
+    const existingRow = existingIndex >= 0 ? customRows[existingIndex] : null;
+
+    if (existingRow) {
+      const conflicts = platforms.filter(
+        (p) => typeof existingRow[p] === "string" && existingRow[p],
+      );
+      if (conflicts.length > 0) {
+        const labels = conflicts
+          .map((p) => SITE_CATEGORIES.find((c) => c.key === p)?.label ?? p)
+          .join(", ");
+        setEditorialFormError(`У этой редакции уже есть канал на: ${labels}.`);
+        return;
+      }
+    }
+
+    setCustomRows((current) => {
+      const next = current.map((r) => ({ ...r }));
+      const idx = next.findIndex((r) => r.editorial === name);
+      if (idx >= 0) {
+        const updated = { ...next[idx] };
+        platforms.forEach((p) => {
+          updated[p] = url;
+        });
+        next[idx] = updated;
+      } else {
+        const row: RawRow = { editorial: name, custom: true };
+        platforms.forEach((p) => {
+          row[p] = url;
+        });
+        next.push(row);
+      }
+      return next;
+    });
+
+    setSelectedSiteEntries((current) => {
+      const next = new Set(current);
+      platforms.forEach((p) => next.add(`${p}::${name}`));
+      return next;
+    });
+    setSelectedEditorials((current) => new Set(current).add(`editorial-${name}`));
+
+    setEditorialFormName("");
+    setEditorialFormUrl("");
+    setEditorialFormPlatforms(new Set(["site"]));
+    setEditorialFormError("");
+    setEditorialFormOpen(false);
+  };
+
+  /* ===== Удаление источника ===== */
+  const handleRemoveSite = (entry: SiteEntry) => {
+    setCustomRows((current) => {
+      const next: RawRow[] = [];
+      current.forEach((row) => {
+        if (row.editorial !== entry.editorial) { next.push(row); return; }
+        const copy: RawRow = { ...row };
+        delete copy[entry.category];
+        const hasAny = Object.keys(copy).some((k) => k !== "editorial" && k !== "custom" && typeof copy[k] === "string");
+        if (hasAny) next.push(copy);
+      });
+      return next;
+    });
+    setSelectedSiteEntries((current) => { const next = new Set(current); next.delete(entry.id); return next; });
+  };
+
+  /* ===== Удаление редакции ===== */
+  const handleRemoveEditorial = (name: string) => {
+    setCustomRows((current) => current.filter((row) => row.editorial !== name));
+    const siteIds = (entriesByEditorial[name] ?? []).map((entry) => entry.id);
+    setSelectedSiteEntries((current) => { const next = new Set(current); siteIds.forEach((id) => next.delete(id)); return next; });
+    setSelectedEditorials((current) => { const next = new Set(current); next.delete(`editorial-${name}`); return next; });
+  };
 
   const visibleSources = useMemo(() => {
     const periodDays = PERIOD_DAYS_BY_KEY[period];
@@ -486,6 +785,36 @@ export default function App() {
   const showFeatured = platformFilter === "all" && editorialFilter === "all" && period === "all";
   const showEmptyState = visibleSources.length === 0 && !showFeatured;
 
+  const handleDownloadExcel = () => {
+    const headers = ["Название", "Платформа", "Редакция", "Время", "Заголовок", "Текст", "Совпадение, %", "Ссылка"];
+    const rows = visibleSources.map((source) => {
+      const platformLabel = PLATFORM_META[source.platform]?.label ?? source.platform;
+      return [
+        source.name,
+        platformLabel,
+        source.editorial,
+        source.time,
+        source.title,
+        source.excerpt,
+        source.match,
+        source.url,
+      ];
+    });
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(cell)).join(";"))
+      .join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `fakt-publikacii-${stamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const faqItems = [
     { q: "Откуда берутся публикации?", a: "Сервис собирает материалы из редакций, отмеченных во вкладке «Источники»: официальных сайтов газет, Telegram-каналов, сообществ ВКонтакте и Одноклассников, каналов на Дзене и в МАХ. Список редакций и платформ вы задаёте сами." },
     { q: "Что означает процент совпадения?", a: "Это оценка того, насколько публикация близка к вашему запросу по смыслу. Чем выше процент — тем точнее материал отвечает теме. Низкий процент не значит, что новость неверная, — просто она может освещать событие под другим углом." },
@@ -502,16 +831,31 @@ export default function App() {
     });
   };
 
+  const openSourcesFromIntro = () => {
+    setSourcesOpen(true);
+  };
+
   return (
     <main className="min-h-screen bg-[#f4f1ed] text-[#181716]">
-      <div className="mx-auto grid max-w-[1440px] lg:min-h-screen lg:grid-cols-[38%_62%]">
+      <div className="relative mx-auto max-w-[1440px] lg:min-h-screen">
         {/* Левая колонка */}
-        <section id="how" className="relative overflow-hidden bg-[#d91f2e] px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-12">
+        <section
+          id="how"
+          className={`relative z-20 overflow-hidden bg-[#d91f2e] px-4 py-6 text-white transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-6 sm:py-8 lg:absolute lg:top-0 lg:bottom-0 lg:left-0 lg:px-8 lg:py-10 xl:px-12 ${
+            intro ? "lg:w-full" : "lg:w-[38%]"
+          }`}
+        >
           <div className="absolute -top-20 -right-32 h-96 w-96 rounded-full border border-white/15" />
           <div className="absolute -top-6 -right-16 h-64 w-64 rounded-full border border-white/15" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 opacity-[0.06]" style={{ backgroundImage: 'url("/torch.svg")', backgroundRepeat: "repeat", backgroundSize: "90px 144px", backgroundPosition: "20px 20px" }} />
 
-          <div className="relative z-10 mx-auto max-w-xl lg:mx-0">
+          <div
+            className={`relative z-10 mx-auto lg:mx-0 ${
+              intro
+                ? "max-w-xl lg:flex lg:min-h-[calc(100vh-5rem)] lg:max-w-none lg:flex-col lg:justify-center"
+                : "max-w-xl"
+            }`}
+          >
             <div className="mb-5 flex items-center justify-between gap-3">
               <a href="#" className="flex items-center gap-2.5" aria-label="Факт — главная">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-[#d91f2e] shadow-[0_6px_18px_rgba(89,5,13,0.25)]">
@@ -530,75 +874,135 @@ export default function App() {
               </button>
             </div>
 
-            <h1 className="max-w-lg text-3xl leading-[1.08] font-extrabold tracking-[-0.045em] sm:text-4xl xl:text-[46px]">
-              Одна новость.
-              <br />
-              Все точки зрения.
-            </h1>
-            <p className="mt-3 max-w-md text-sm leading-6 text-white/75 sm:text-base">
-              Введите заголовок или опишите событие — мы найдём, что об этом пишут другие издания.
-            </p>
+            <div className={`${intro ? "lg:mx-auto lg:max-w-2xl lg:text-center" : ""}`}>
+              <h1 className={`max-w-lg text-3xl leading-[1.08] font-extrabold tracking-[-0.045em] sm:text-4xl xl:text-[46px] ${intro ? "lg:mx-auto" : ""}`}>
+                Одна новость.
+                <br />
+                Все точки зрения.
+              </h1>
+              <p className={`mt-3 max-w-md text-sm leading-6 text-white/75 sm:text-base ${intro ? "lg:mx-auto" : ""}`}>
+                Введите заголовок или опишите событие — мы найдём, что об этом пишут другие издания.
+              </p>
 
-            <form onSubmit={handleSubmit} className="mt-5">
-              <div className="rounded-2xl bg-white p-1.5 shadow-[0_18px_45px_rgba(89,5,13,0.2)]">
-                <textarea id="news-query" value={query} onChange={(event) => setQuery(event.target.value)} rows={2} placeholder="Вставьте заголовок или текст новости..." className="w-full resize-none border-0 bg-transparent px-3 pt-2 text-sm leading-6 font-medium text-[#25211f] outline-none placeholder:text-[#aaa29c]" />
-                <div className="flex items-center justify-end border-t border-[#eee9e5] pt-1.5 pr-1 pl-2">
-                  <button type="submit" className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#191716] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#332f2c] active:scale-[0.98]">
-                    Найти
-                    <Icon className="h-4 w-4"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></Icon>
+              <form onSubmit={handleSubmit} className={`mt-5 ${intro ? "lg:mx-auto lg:max-w-2xl" : ""}`}>
+                <div className="rounded-2xl bg-white p-1.5 shadow-[0_18px_45px_rgba(89,5,13,0.2)]">
+                  <textarea id="news-query" value={query} onChange={(event) => setQuery(event.target.value)} rows={2} placeholder="Вставьте заголовок или текст новости..." className="w-full resize-none border-0 bg-transparent px-3 pt-2 text-sm leading-6 font-medium text-[#25211f] outline-none placeholder:text-[#aaa29c]" />
+                  <div className="flex items-center justify-end border-t border-[#eee9e5] pt-1.5 pr-1 pl-2">
+                    <button type="submit" className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#191716] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#332f2c] active:scale-[0.98]">
+                      Найти
+                      <Icon className="h-4 w-4"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></Icon>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {intro && (
+              <div className="mt-6 lg:mx-auto lg:max-w-md">
+                <p className="mb-2 text-[10px] font-extrabold tracking-[0.12em] text-white/70 uppercase lg:text-center">Быстрый доступ</p>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={openSourcesFromIntro}
+                    className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-white px-3 py-3 text-left shadow-[0_10px_30px_rgba(89,5,13,0.25)] ring-2 ring-white/30 transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(89,5,13,0.35)] active:scale-[0.99]"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#d91f2e] text-white shadow-[0_6px_16px_rgba(217,31,46,0.35)]">
+                      <Icon className="h-5 w-5"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="8" cy="18" r="2" /><path d="m8 7 8 4M16 13l-6 4" /></Icon>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-extrabold text-[#181716]">Настроить источники</span>
+                      <span className="mt-0.5 block text-[11px] font-semibold text-[#817a74]">Выбрано {totalSelected} из {totalAvailable}</span>
+                    </span>
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#191716] text-white transition-transform group-hover:translate-x-0.5">
+                      <Icon className="h-4 w-4"><path d="m9 18 6-6-6-6" /></Icon>
+                    </span>
                   </button>
                 </div>
-              </div>
-            </form>
 
-            <div className="mt-3">
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <p className="text-[11px] font-extrabold tracking-[0.12em] text-white uppercase">Источники</p>
-                <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-white">{totalSelected}/{totalAvailable}</span>
+                {!examplesHidden && (
+                  <div className="mt-5">
+                    <p className="mb-2 text-[10px] font-bold text-white/55 lg:text-center">Попробуйте пример:</p>
+                    <div className="flex flex-wrap gap-1.5 lg:justify-center">
+                      {examples.map((example) => (
+                        <button type="button" key={example} onClick={() => handleExampleClick(example)} className="cursor-pointer rounded-full border border-white/25 bg-white/[0.07] px-3 py-1.5 text-left text-[11px] font-medium text-white/85 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#d91f2e]">
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <button type="button" onClick={() => setSourcesOpen(true)} className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-left shadow-[0_10px_30px_rgba(89,5,13,0.25)] ring-2 ring-white/30 transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(89,5,13,0.35)] active:scale-[0.99]">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#d91f2e] text-white shadow-[0_6px_16px_rgba(217,31,46,0.35)]">
-                  <Icon className="h-5 w-5"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="8" cy="18" r="2" /><path d="m8 7 8 4M16 13l-6 4" /></Icon>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-extrabold text-[#181716]">Настроить источники</span>
-                </span>
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#191716] text-white transition-transform group-hover:translate-x-0.5">
-                  <Icon className="h-4 w-4"><path d="m9 18 6-6-6-6" /></Icon>
-                </span>
-              </button>
-              <p className="mt-1.5 flex items-center gap-1.5 text-[10px] font-semibold text-white/75">
-                <Icon className="h-3 w-3"><path d="m5 12 4 4 10-10" /></Icon>
-                По умолчанию включены все платформы и редакции
-              </p>
-            </div>
+            )}
 
-            <div className="mt-4">
-              <p className="mb-2 text-[10px] font-bold text-white/55">Попробуйте пример:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {examples.map((example) => (
-                  <button type="button" key={example} onClick={() => setQuery(example)} className="cursor-pointer rounded-full border border-white/25 bg-white/[0.07] px-3 py-1.5 text-left text-[11px] font-medium text-white/85 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#d91f2e]">
-                    {example}
-                  </button>
-                ))}
+            {!intro && (
+              <div className="mt-3">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-extrabold tracking-[0.12em] text-white uppercase">Источники</p>
+                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-white">{totalSelected}/{totalAvailable}</span>
+                </div>
+                <button type="button" onClick={() => setSourcesOpen(true)} className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-left shadow-[0_10px_30px_rgba(89,5,13,0.25)] ring-2 ring-white/30 transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(89,5,13,0.35)] active:scale-[0.99]">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#d91f2e] text-white shadow-[0_6px_16px_rgba(217,31,46,0.35)]">
+                    <Icon className="h-5 w-5"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="8" cy="18" r="2" /><path d="m8 7 8 4M16 13l-6 4" /></Icon>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-extrabold text-[#181716]">Настроить источники</span>
+                  </span>
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#191716] text-white transition-transform group-hover:translate-x-0.5">
+                    <Icon className="h-4 w-4"><path d="m9 18 6-6-6-6" /></Icon>
+                  </span>
+                </button>
+                <p className="mt-1.5 flex items-center gap-1.5 text-[10px] font-semibold text-white/75">
+                  <Icon className="h-3 w-3"><path d="m5 12 4 4 10-10" /></Icon>
+                  По умолчанию включены все платформы и редакции
+                </p>
               </div>
-            </div>
+            )}
+
+            {!intro && !examplesHidden && (
+              <div className="mt-4">
+                <p className="mb-2 text-[10px] font-bold text-white/55">Попробуйте пример:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {examples.map((example) => (
+                    <button type="button" key={example} onClick={() => handleExampleClick(example)} className="cursor-pointer rounded-full border border-white/25 bg-white/[0.07] px-3 py-1.5 text-left text-[11px] font-medium text-white/85 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#d91f2e]">
+                      {example}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
         {/* Правая колонка */}
-        <section id="sources" className="bg-[#f7f5f2] px-4 py-6 sm:px-6 lg:px-8 lg:py-8 xl:px-10">
+        <section
+          id="sources"
+          className={`bg-[#f7f5f2] px-4 py-6 transition-[margin,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-6 lg:px-8 lg:py-8 xl:px-10 ${
+            intro ? "lg:ml-0 lg:opacity-0" : "lg:ml-[38%] lg:opacity-100"
+          }`}
+        >
           <div className="mx-auto max-w-3xl">
             <div className="flex flex-col gap-3 border-b border-[#ddd7d1] pb-4">
-              <div>
-                <div className="mb-1 flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#d91f2e] uppercase">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#d91f2e] opacity-40" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#d91f2e]" />
-                  </span>
-                  {visibleSources.length > 0 ? `Найдено ${visibleSources.length} публикаций` : "Публикаций по фильтрам не найдено"}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="mb-1 flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#d91f2e] uppercase">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#d91f2e] opacity-40" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#d91f2e]" />
+                    </span>
+                    {visibleSources.length > 0 ? `Найдено ${visibleSources.length} публикаций` : "Публикаций по фильтрам не найдено"}
+                  </div>
+                  <h2 className="text-xl font-extrabold tracking-[-0.03em] sm:text-2xl">Об этом пишут</h2>
                 </div>
-                <h2 className="text-xl font-extrabold tracking-[-0.03em] sm:text-2xl">Об этом пишут</h2>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={visibleSources.length === 0}
+                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d9d2cc] bg-white px-3 py-2 text-xs font-extrabold text-[#292522] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Icon className="h-4 w-4"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></Icon>
+                  Скачать Excel
+                </button>
               </div>
 
               <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -609,7 +1013,7 @@ export default function App() {
                   <option value="newest">Сначала новые</option>
                   <option value="oldest">Сначала старые</option>
                 </FilterSelect>
-                <FilterSelect label="Платформа" icon={<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>} value={platformFilter} onChange={(value) => setPlatformFilter(value as SiteCategory | "all")}>
+                <FilterSelect label="Платформа" icon={<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>} value={platformFilter} onChange={(value) => setPlatformFilter(value)}>
                   <option value="all">Все платформы</option>
                   {SITE_CATEGORIES.map((category) => (<option key={category.key} value={category.key}>{category.label}</option>))}
                 </FilterSelect>
@@ -680,7 +1084,7 @@ export default function App() {
             <div className="mt-3 space-y-2">
               {displayedSources.map((source) => {
                 const isExpanded = expandedNewsId === source.id;
-                const platformMeta = PLATFORM_META[source.platform as SiteCategory] ?? PLATFORM_META.site;
+                const platformMeta = PLATFORM_META[source.platform] ?? { label: source.platform, color: "#d91f2e" };
                 return (
                   <article key={source.id} onClick={() => setExpandedNewsId(isExpanded ? null : source.id)} className="cursor-pointer rounded-xl border border-[#e2dcd6] bg-white p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d3cbc4] hover:shadow-[0_8px_24px_rgba(41,31,26,0.07)]">
                     <div className="flex items-start gap-3">
@@ -820,7 +1224,7 @@ export default function App() {
 
             <div className="flex gap-1 border-b border-[#e2dcd6] bg-white px-4 sm:px-6">
               <button type="button" onClick={() => setSourcesTab("sites")} className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-xs font-extrabold transition-colors ${sourcesTab === "sites" ? "border-[#d91f2e] text-[#d91f2e]" : "border-transparent text-[#7a736d] hover:text-[#2a2725]"}`}>
-                Сайты
+                Платформы
                 <span className="ml-1.5 rounded-full bg-[#fff0f1] px-1.5 py-0.5 text-[9px] font-extrabold text-[#d91f2e]">{selectedSiteEntries.size}/{allSiteEntryIds.length}</span>
               </button>
               <button type="button" onClick={() => setSourcesTab("editorials")} className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-xs font-extrabold transition-colors ${sourcesTab === "editorials" ? "border-[#d91f2e] text-[#d91f2e]" : "border-transparent text-[#7a736d] hover:text-[#2a2725]"}`}>
@@ -833,7 +1237,8 @@ export default function App() {
               {sourcesTab === "sites" && (
                 <section aria-labelledby="sites-heading">
                   <QuickSearch value={siteSearch} onChange={setSiteSearch} placeholder="Поиск по редакции или ссылке…" count={matchedSiteEntriesCount} total={allSiteEntryIds.length} />
-                  <div className="mb-2.5 flex items-center justify-between gap-3">
+
+                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h3 id="sites-heading" className="flex items-center gap-1.5 text-xs font-extrabold tracking-[0.04em] text-[#2a2725] uppercase">
                         <Icon className="h-3.5 w-3.5 text-[#d91f2e]"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></Icon>
@@ -841,9 +1246,11 @@ export default function App() {
                       </h3>
                       <p className="mt-0.5 text-[11px] text-[#918983]">Выбрано {selectedSiteEntries.size} из {allSiteEntryIds.length} каналов</p>
                     </div>
-                    <button type="button" onClick={() => setAllVisibleSiteEntries(!allVisibleSiteEntriesSelected)} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
-                      {allVisibleSiteEntriesSelected ? (siteSearch ? "Снять найденные" : "Снять все") : (siteSearch ? "Выбрать найденные" : "Выбрать все")}
-                    </button>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button type="button" onClick={() => setAllVisibleSiteEntries(!allVisibleSiteEntriesSelected)} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
+                        {allVisibleSiteEntriesSelected ? (siteSearch ? "Снять найденные" : "Снять все") : (siteSearch ? "Выбрать найденные" : "Выбрать все")}
+                      </button>
+                    </div>
                   </div>
 
                   {visibleCategories.length === 0 ? (
@@ -854,7 +1261,7 @@ export default function App() {
                   ) : (
                     <div className="flex flex-col gap-1.5">
                       {visibleCategories.map((category) => {
-                        const entries = filteredSiteEntriesByCategory[category.key];
+                        const entries = filteredSiteEntriesByCategory[category.key] ?? [];
                         const selectedCount = entries.filter((entry) => selectedSiteEntries.has(entry.id)).length;
                         const isAllSelected = entries.length > 0 && selectedCount === entries.length;
                         const isNoneSelected = selectedCount === 0;
@@ -865,7 +1272,7 @@ export default function App() {
                             <div role="button" tabIndex={0} onClick={() => toggleCategoryExpanded(category.key)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleCategoryExpanded(category.key); } }} className="flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2.5 text-left transition-colors hover:bg-[#faf8f6]">
                               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white" style={{ backgroundColor: category.color }}><Icon className="h-4 w-4">{category.icon}</Icon></span>
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-xs font-extrabold">{category.label}</span>
+                                <span className="block truncate text-xs font-extrabold">{category.label}{category.custom ? " (своя)" : ""}</span>
                                 <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{selectedCount} из {entries.length} выбрано{siteSearch ? " · найдено" : ""}</span>
                               </span>
                               <button type="button" onClick={(event) => { event.stopPropagation(); setCategoryEntries(category.key, !isAllSelected); }} aria-label={isAllSelected ? `Снять все ${category.label}` : `Выбрать все ${category.label}`} className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition-colors ${isAllSelected ? "border-[#d91f2e] bg-[#d91f2e] text-white" : isNoneSelected ? "border-[#c8c0b9] bg-white" : "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]"}`}>
@@ -885,16 +1292,23 @@ export default function App() {
                                       const isSelected = selectedSiteEntries.has(entry.id);
                                       return (
                                         <li key={entry.id}>
-                                          <button type="button" onClick={() => toggleSiteEntry(entry.id)} className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-[#f1ece7]">
-                                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[10px] font-black text-white" style={{ backgroundColor: entry.editorialColor }}>{entry.editorialMark}</span>
-                                            <span className="min-w-0 flex-1">
-                                              <span className="block truncate text-xs font-semibold">{entry.editorial}</span>
-                                              <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{entry.url}</span>
-                                            </span>
-                                            <span className={`grid h-4.5 w-4.5 shrink-0 place-items-center rounded border ${isSelected ? "border-[#d91f2e] bg-[#d91f2e] text-white" : "border-[#c8c0b9] bg-white"}`}>
-                                              {isSelected && (<Icon className="h-2.5 w-2.5"><path d="m5 12 4 4 10-10" /></Icon>)}
-                                            </span>
-                                          </button>
+                                          <div className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-[#f1ece7]">
+                                            <button type="button" onClick={() => toggleSiteEntry(entry.id)} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left">
+                                              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[10px] font-black text-white" style={{ backgroundColor: entry.editorialColor }}>{entry.editorialMark}</span>
+                                              <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-xs font-semibold">{entry.editorial}{entry.custom ? " (свой)" : ""}</span>
+                                                <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{entry.url}</span>
+                                              </span>
+                                              <span className={`grid h-4.5 w-4.5 shrink-0 place-items-center rounded border ${isSelected ? "border-[#d91f2e] bg-[#d91f2e] text-white" : "border-[#c8c0b9] bg-white"}`}>
+                                                {isSelected && (<Icon className="h-2.5 w-2.5"><path d="m5 12 4 4 10-10" /></Icon>)}
+                                              </span>
+                                            </button>
+                                            {entry.custom && (
+                                              <button type="button" onClick={() => handleRemoveSite(entry)} aria-label="Удалить источник" className="grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-md text-[#b5ada7] transition-colors hover:bg-[#fff0f1] hover:text-[#d91f2e]">
+                                                <Icon className="h-3.5 w-3.5"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" /></Icon>
+                                              </button>
+                                            )}
+                                          </div>
                                         </li>
                                       );
                                     })}
@@ -913,18 +1327,94 @@ export default function App() {
               {sourcesTab === "editorials" && (
                 <section aria-labelledby="editorials-heading">
                   <QuickSearch value={editorialSearch} onChange={setEditorialSearch} placeholder="Поиск по названию редакции…" count={filteredEditorialItems.length} total={allEditorialIds.length} />
-                  <div className="mb-2.5 flex items-center justify-between gap-3">
+                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h3 id="editorials-heading" className="flex items-center gap-1.5 text-xs font-extrabold tracking-[0.04em] text-[#2a2725] uppercase">
                         <Icon className="h-3.5 w-3.5 text-[#d91f2e]"><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h8M8 17h5" /></Icon>
-                        Редакции газет
+                        Редакции
                       </h3>
                       <p className="mt-0.5 text-[11px] text-[#918983]">Выбрано {selectedEditorials.size} из {allEditorialIds.length}</p>
                     </div>
-                    <button type="button" onClick={toggleAllEditorials} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
-                      {allVisibleEditorialsSelected ? (editorialSearch ? "Снять найденные" : "Снять все") : (editorialSearch ? "Выбрать найденные" : "Выбрать все")}
-                    </button>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => { setEditorialFormOpen((v) => !v); setEditorialFormError(""); }}
+                        className="flex cursor-pointer items-center gap-1 rounded-lg bg-[#d91f2e] px-2.5 py-1 text-[11px] font-extrabold text-white transition-colors hover:bg-[#bd1725]"
+                      >
+                        <Icon className="h-3.5 w-3.5"><path d="M12 5v14M5 12h14" /></Icon>
+                        Добавить редакцию
+                      </button>
+                      <button type="button" onClick={toggleAllEditorials} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5954] transition-colors hover:border-[#d91f2e] hover:text-[#d91f2e]">
+                        {allVisibleEditorialsSelected ? (editorialSearch ? "Снять найденные" : "Снять все") : (editorialSearch ? "Выбрать найденные" : "Выбрать все")}
+                      </button>
+                    </div>
                   </div>
+
+                  {editorialFormOpen && (
+                    <div className="mb-3 rounded-xl border border-[#e2dcd6] bg-white p-3">
+                      <p className="mb-2 text-xs font-extrabold">Новая редакция</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label className="block sm:col-span-2">
+                          <span className="mb-1 block text-[10px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">Название редакции</span>
+                          <input value={editorialFormName} onChange={(e) => setEditorialFormName(e.target.value)} placeholder="Название" className="w-full rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-2 text-xs font-semibold outline-none focus:border-[#d91f2e]" />
+                        </label>
+                        <label className="block sm:col-span-2">
+                          <span className="mb-1 block text-[10px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">
+                            Платформы
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {SITE_CATEGORIES.map((c) => {
+                              const active = editorialFormPlatforms.has(c.key);
+                              return (
+                                <button
+                                  key={c.key}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditorialFormPlatforms((current) => {
+                                      const next = new Set(current);
+                                      if (next.has(c.key)) next.delete(c.key);
+                                      else next.add(c.key);
+                                      return next;
+                                    });
+                                    setEditorialFormError("");
+                                  }}
+                                  className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+                                    active
+                                      ? "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]"
+                                      : "border-[#ddd6d0] bg-white text-[#5f5954] hover:border-[#c7bdb5]"
+                                  }`}
+                                >
+                                  <span
+                                    className="grid h-3.5 w-3.5 place-items-center rounded-[3px] border"
+                                    style={{
+                                      borderColor: active ? "#d91f2e" : "#c8c0b9",
+                                      backgroundColor: active ? "#d91f2e" : "transparent",
+                                    }}
+                                  >
+                                    {active && (
+                                      <Icon className="h-2.5 w-2.5 text-white">
+                                        <path d="m5 12 4 4 10-10" />
+                                      </Icon>
+                                    )}
+                                  </span>
+                                  {c.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </label>
+                        <label className="block sm:col-span-2">
+                          <span className="mb-1 block text-[10px] font-extrabold tracking-[0.08em] text-[#8e8680] uppercase">Ссылка</span>
+                          <input value={editorialFormUrl} onChange={(e) => setEditorialFormUrl(e.target.value)} placeholder="https://..." className="w-full rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-2 text-xs font-semibold outline-none focus:border-[#d91f2e]" />
+                        </label>
+                      </div>
+                      {editorialFormError && <p className="mt-1.5 text-[11px] font-bold text-[#d91f2e]">{editorialFormError}</p>}
+                      <div className="mt-2 flex justify-end gap-1.5">
+                        <button type="button" onClick={() => { setEditorialFormOpen(false); setEditorialFormError(""); }} className="cursor-pointer rounded-lg border border-[#ddd6d0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#5f5954]">Отмена</button>
+                        <button type="button" onClick={handleAddEditorial} className="cursor-pointer rounded-lg bg-[#d91f2e] px-2.5 py-1.5 text-[11px] font-extrabold text-white hover:bg-[#bd1725]">Сохранить</button>
+                      </div>
+                    </div>
+                  )}
 
                   {filteredEditorialItems.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-[#d9d2cc] bg-white px-4 py-8 text-center">
@@ -941,17 +1431,24 @@ export default function App() {
                         const visualSelected = isAll || isPartial || isInEditorials;
 
                         return (
-                          <button type="button" key={editorial.id} onClick={() => toggleEditorial(editorial.id)} className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all ${visualSelected ? "border-[#d9d1ca] bg-white" : "border-transparent bg-[#efebe7] opacity-55 hover:opacity-80"}`}>
-                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black text-white" style={{ backgroundColor: editorial.color }}>{editorial.mark}</span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-xs font-extrabold">{editorial.name}</span>
-                              <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{isPartial ? "Часть каналов" : "Редакция газеты"}</span>
-                            </span>
-                            <span className={`grid h-4.5 w-4.5 shrink-0 place-items-center rounded border ${isAll ? "border-[#d91f2e] bg-[#d91f2e] text-white" : isPartial ? "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]" : "border-[#c8c0b9] bg-white"}`}>
-                              {isAll && (<Icon className="h-2.5 w-2.5"><path d="m5 12 4 4 10-10" /></Icon>)}
-                              {isPartial && (<span className="h-0.5 w-2.5 rounded bg-[#d91f2e]" />)}
-                            </span>
-                          </button>
+                          <div key={editorial.id} className="relative">
+                            <button type="button" onClick={() => toggleEditorial(editorial.id)} className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 pr-9 text-left transition-all ${visualSelected ? "border-[#d9d1ca] bg-white" : "border-transparent bg-[#efebe7] opacity-55 hover:opacity-80"}`}>
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black text-white" style={{ backgroundColor: editorial.color }}>{editorial.mark}</span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-xs font-extrabold">{editorial.name}{editorial.custom ? " (своя)" : ""}</span>
+                                <span className="mt-0.5 block truncate text-[10px] text-[#918983]">{isPartial ? "Часть каналов" : "Редакция газеты"}</span>
+                              </span>
+                              <span className={`grid h-4.5 w-4.5 shrink-0 place-items-center rounded border ${isAll ? "border-[#d91f2e] bg-[#d91f2e] text-white" : isPartial ? "border-[#d91f2e] bg-[#fff0f1] text-[#d91f2e]" : "border-[#c8c0b9] bg-white"}`}>
+                                {isAll && (<Icon className="h-2.5 w-2.5"><path d="m5 12 4 4 10-10" /></Icon>)}
+                                {isPartial && (<span className="h-0.5 w-2.5 rounded bg-[#d91f2e]" />)}
+                              </span>
+                            </button>
+                            {editorial.custom && (
+                              <button type="button" onClick={() => handleRemoveEditorial(editorial.name)} aria-label="Удалить редакцию" className="absolute top-1/2 right-2 grid h-6 w-6 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-[#b5ada7] transition-colors hover:bg-[#fff0f1] hover:text-[#d91f2e]">
+                                <Icon className="h-3.5 w-3.5"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" /></Icon>
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
