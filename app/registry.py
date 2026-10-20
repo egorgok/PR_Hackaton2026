@@ -12,7 +12,7 @@ COLUMNS = {
     Platform.telegram: "ТГ",
     Platform.vk: "ВК",
     Platform.ok: "ОК",
-    Platform.zen: "ДЗЕН",
+    Platform.dzen: "ДЗЕН",
     Platform.max: "МАХ",
 }
 
@@ -119,4 +119,30 @@ class SourceRegistry:
                     )
                 else:
                     selected.append(source)
+        return selected
+
+    def resolve_pairs(self, selections) -> list[Source | dict[str, str]]:
+        selected: list[Source | dict[str, str]] = []
+        for selection in selections:
+            editor = " ".join(selection.editor.split())
+            source = next(
+                (
+                    item
+                    for item in self._items
+                    if item.editor.casefold() == editor.casefold()
+                    and item.platform == selection.platform
+                ),
+                None,
+            )
+            if source is not None:
+                selected.append(source)
+            else:
+                selected.append(
+                    {
+                        "editor": editor,
+                        "platform": selection.platform.value,
+                        "url": "",
+                        "message": "Для редакции нет адреса на выбранной площадке.",
+                    }
+                )
         return selected

@@ -70,11 +70,11 @@ def test_registry_loads_and_resolves_table_source():
 
 def test_registry_marks_missing_platform_without_inventing_url():
     registry = SourceRegistry(Settings.from_env().sources_file)
-    selected = registry.resolve_selection([Platform.zen], ["Авангард"])
+    selected = registry.resolve_selection([Platform.dzen], ["Авангард"])
     assert selected == [
         {
             "editor": "Авангард",
-            "platform": "zen",
+            "platform": "dzen",
             "url": "",
             "message": "Для редакции нет адреса на выбранной площадке.",
         }

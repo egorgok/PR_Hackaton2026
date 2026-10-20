@@ -171,7 +171,7 @@ def _extract_posts(soup: BeautifulSoup, base_url: str, platform: Platform) -> li
         Platform.vk: "[data-post-id], .wall_post",
         Platform.ok: "[data-post-id], .feed",
         Platform.max: "article, [class*='post'], [class*='message']",
-        Platform.zen: "article, [class*='article'], [class*='feed']",
+        Platform.dzen: "article, [class*='article'], [class*='feed']",
         Platform.website: (
             "article, [itemtype*='Article'], "
             "[class*='news-item'], [class*='post-item'], [class*='article-item']"

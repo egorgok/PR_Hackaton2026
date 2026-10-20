@@ -1,5 +1,8 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
+import mimetypes
 import secrets
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,12 +76,7 @@ async def create_job(
     request: Request,
     response: Response,
 ) -> dict[str, object]:
-    selected = registry.resolve_selection(payload.platform, payload.editor)
-    if not selected:
-        raise HTTPException(
-            status_code=422,
-            detail="Для выбранных редакций и площадок не найдено URL в реестре источников.",
-        )
+    selected = registry.resolve_pairs(payload.resolve_sources())
     session_id = get_or_create_session(request, response)
     return await search_service.start(payload, selected, session_id)
 
@@ -127,7 +125,33 @@ async def export_job(job_id: str, request: Request) -> Response:
     job = await jobs.snapshot(job_id, session_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Задание не найдено.")
-    content = build_workbook(job).getvalue()
+    days = request.query_params.get("days")
+    include_undated = request.query_params.get("include_undated") == "true"
+    platforms = set(request.query_params.getlist("platform"))
+    editors = {value.casefold() for value in request.query_params.getlist("editor")}
+    filtered = job
+    if days or platforms or editors:
+        filtered = dict(job)
+        results = list(job["results"])
+        if days:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
+            results = [
+                item for item in results
+                if (
+                    (not item.get("published_at") and include_undated)
+                    or (
+                        item.get("published_at")
+                        and datetime.fromisoformat(item["published_at"].replace("Z", "+00:00")) >= cutoff
+                    )
+                )
+            ]
+        if platforms:
+            results = [item for item in results if item["platform"] in platforms]
+        if editors:
+            results = [item for item in results if item["editor"].casefold() in editors]
+        filtered["results"] = results
+        filtered["count"] = len(results)
+    content = build_workbook(filtered).getvalue()
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -139,3 +163,20 @@ async def export_job(job_id: str, request: Request) -> Response:
 async def get_history(request: Request, response: Response) -> dict[str, object]:
     session_id = get_or_create_session(request, response)
     return {"jobs": await jobs.history(session_id)}
+
+
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / "Frontend" / "dist"
+
+
+@app.get("/{path:path}", include_in_schema=False)
+async def frontend(path: str):
+    if not FRONTEND_DIST.is_dir():
+        raise HTTPException(status_code=404, detail="Frontend не собран.")
+    requested = (FRONTEND_DIST / path).resolve()
+    if FRONTEND_DIST not in requested.parents and requested != FRONTEND_DIST:
+        raise HTTPException(status_code=404, detail="Файл не найден.")
+    if requested.is_file():
+        media_type, _ = mimetypes.guess_type(requested.name)
+        return Response(content=requested.read_bytes(), media_type=media_type)
+    index = FRONTEND_DIST / "index.html"
+    return Response(content=index.read_bytes(), media_type="text/html")

@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -9,27 +10,61 @@ class Platform(StrEnum):
     telegram = "telegram"
     vk = "vk"
     ok = "ok"
-    zen = "zen"
+    dzen = "dzen"
+
+
+class SourceSelection(BaseModel):
+    editor: str = Field(min_length=1, max_length=200)
+    platform: Platform
+
+    @field_validator("editor")
+    @classmethod
+    def normalize_editor(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Название редакции не может быть пустым.")
+        return value
 
 
 class SearchRequest(BaseModel):
     text: str = Field(min_length=3, max_length=10_000)
-    platform: list[Platform] = Field(min_length=1, max_length=20)
-    editor: list[str] = Field(min_length=1, max_length=50)
+    sources: list[SourceSelection] | None = Field(default=None, max_length=268)
+    platform: list[Platform] = Field(default_factory=list, max_length=20)
+    editor: list[str] = Field(default_factory=list, max_length=50)
     days: int = Field(default=7, ge=1, le=30)
 
     @field_validator("editor")
     @classmethod
     def normalize_editors(cls, values: list[str]) -> list[str]:
-        cleaned = list(dict.fromkeys(value.strip() for value in values if value.strip()))
-        if not cleaned:
-            raise ValueError("Нужно выбрать хотя бы одну редакцию.")
-        return cleaned
+        return list(dict.fromkeys(" ".join(value.split()) for value in values if value.strip()))
 
     @field_validator("platform")
     @classmethod
     def unique_platforms(cls, values: list[Platform]) -> list[Platform]:
         return list(dict.fromkeys(values))
+
+    @field_validator("sources")
+    @classmethod
+    def unique_sources(cls, values: list[SourceSelection] | None):
+        if values is None:
+            return None
+        seen: set[tuple[str, Platform]] = set()
+        result = []
+        for source in values:
+            key = (source.editor.casefold(), source.platform)
+            if key not in seen:
+                seen.add(key)
+                result.append(source)
+        return result
+
+    def resolve_sources(self) -> list[SourceSelection]:
+        if self.sources is not None:
+            return self.sources
+        return [
+            SourceSelection(editor=editor, platform=platform)
+            for editor in self.editor
+            for platform in self.platform
+        ]
 
     @field_validator("days")
     @classmethod

@@ -329,6 +329,40 @@ type EditorialItem = {
   custom?: boolean;
 };
 
+type ApiSource = { editor: string; platform: string; url: string };
+type ApiPublication = {
+  editor: string;
+  platform: string;
+  source_name: string;
+  title: string;
+  url: string;
+  excerpt: string;
+  published_at: string | null;
+  date_status: string;
+  relevance: string;
+  match_method: string;
+};
+type ApiJob = {
+  job_id: string;
+  status: string;
+  results: ApiPublication[];
+  processed_sources: number;
+  total_sources: number;
+};
+
+const PLATFORM_ALIASES: Record<string, string> = {
+  site: "website",
+  tg: "telegram",
+};
+
+function apiPlatform(platform: string) {
+  return PLATFORM_ALIASES[platform] ?? platform;
+}
+
+function publicationId(item: ApiPublication) {
+  return `${item.platform}:${item.url}`;
+}
+
 export default function App() {
   const [query, setQuery] = useState("В центре Москвы перекроют улицы");
   const [searchedQuery, setSearchedQuery] = useState(query);
@@ -366,6 +400,11 @@ export default function App() {
   const [expandedCategories, setExpandedCategories] = useState<Set<SiteCategory>>(() => new Set());
   const [hydrated, setHydrated] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [apiSources, setApiSources] = useState<ApiSource[]>([]);
+  const [apiJob, setApiJob] = useState<ApiJob | null>(null);
+  const [apiError, setApiError] = useState("");
+  const [searching, setSearching] = useState(false);
+  const pollRef = useRef<number | null>(null);
 
   const syncingRef = useRef<"none" | "from-editorials" | "from-sites">("none");
 
@@ -442,6 +481,39 @@ export default function App() {
     () => Object.values(siteEntriesByCategory).flat().map((entry) => entry.id),
     [siteEntriesByCategory],
   );
+
+  useEffect(() => {
+    fetch("/sources")
+      .then((response) => {
+        if (!response.ok) throw new Error("Не удалось загрузить источники");
+        return response.json();
+      })
+      .then((body: { sources: ApiSource[] }) => setApiSources(body.sources))
+      .catch((error: Error) => setApiError(error.message));
+    return () => {
+      if (pollRef.current !== null) window.clearTimeout(pollRef.current);
+    };
+  }, []);
+
+  const pollJob = (jobId: string) => {
+    fetch(`/jobs/${jobId}`)
+      .then((response) => {
+        if (!response.ok) throw new Error("Не удалось получить результаты поиска");
+        return response.json() as Promise<ApiJob>;
+      })
+      .then((job) => {
+        setApiJob(job);
+        if (job.status === "queued" || job.status === "running") {
+          pollRef.current = window.setTimeout(() => pollJob(jobId), 2000);
+        } else {
+          setSearching(false);
+        }
+      })
+      .catch((error: Error) => {
+        setApiError(error.message);
+        setSearching(false);
+      });
+  };
 
   const editorialItems = useMemo<EditorialItem[]>(
     () => effectiveRows.map((row, index) => ({
@@ -578,20 +650,52 @@ export default function App() {
     [editorialItems, normalizedEditorialSearch],
   );
 
+  const startSearch = (text: string) => {
+    text = text.trim();
+    if (!text) return;
+    if (pollRef.current !== null) window.clearTimeout(pollRef.current);
+    setApiError("");
+    setApiJob(null);
+    setSearching(true);
+    setSearchedQuery(text);
+    setIntro(false);
+    setExamplesHidden(true);
+    const selected = Array.from(selectedSiteEntries).flatMap((id) => {
+      const [platform, ...nameParts] = id.split("::");
+      const editor = nameParts.join("::");
+      const source = apiSources.find(
+        (item) => item.editor === editor && item.platform === apiPlatform(platform),
+      );
+      return source ? [{ editor: source.editor, platform: source.platform }] : [];
+    });
+    fetch("/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        days: PERIOD_DAYS_BY_KEY[period] ?? 7,
+        sources: selected,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Не удалось запустить поиск");
+        return response.json() as Promise<{ job_id: string }>;
+      })
+      .then(({ job_id }) => pollJob(job_id))
+      .catch((error: Error) => {
+        setApiError(error.message);
+        setSearching(false);
+      });
+  };
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (query.trim()) {
-      setSearchedQuery(query.trim());
-      setIntro(false);
-      setExamplesHidden(true);
-    }
+    startSearch(query);
   };
 
   const handleExampleClick = (example: string) => {
     setQuery(example);
-    setSearchedQuery(example);
-    setIntro(false);
-    setExamplesHidden(true);
+    startSearch(example);
   };
 
   const toggleCategoryExpanded = (key: SiteCategory) => {
@@ -744,15 +848,42 @@ export default function App() {
 
   const visibleSources = useMemo(() => {
     const periodDays = PERIOD_DAYS_BY_KEY[period];
-    return sources
+    return (apiJob?.results ?? [])
+      .filter((source) => platformFilter === "all" || source.platform === apiPlatform(platformFilter))
+      .filter((source) => editorialFilter === "all" || source.editor === editorialFilter)
       .filter((source) => {
-        if (platformFilter !== "all" && source.platform !== platformFilter) return false;
-        if (editorialFilter !== "all" && source.editorial !== editorialFilter) return false;
-        if (periodDays !== undefined) { if (source.ageMinutes > periodDays * 1440) return false; }
-        return true;
+        if (periodDays === undefined || !source.published_at) return true;
+        return Date.now() - Date.parse(source.published_at) <= periodDays * 86400000;
       })
-      .sort((a, b) => dateOrder === "newest" ? a.ageMinutes - b.ageMinutes : b.ageMinutes - a.ageMinutes);
-  }, [platformFilter, editorialFilter, dateOrder, period]);
+      .sort((a, b) => {
+        const left = a.published_at ? Date.parse(a.published_at) : 0;
+        const right = b.published_at ? Date.parse(b.published_at) : 0;
+        return dateOrder === "newest" ? right - left : left - right;
+      })
+      .map((item) => {
+        const date = item.published_at ? new Date(item.published_at) : null;
+        const ageMinutes = date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)) : 0;
+        const platform = Object.keys(PLATFORM_ALIASES).find((key) => apiPlatform(key) === item.platform) ?? item.platform;
+        const meta = editorialMeta[item.editor];
+        const platformMeta = PLATFORM_META[platform] ?? { label: item.platform, color: "#d91f2e" };
+        return {
+          id: publicationId(item),
+          platform,
+          editorial: item.editor,
+          name: item.source_name,
+          url: item.url,
+          title: item.title,
+          excerpt: item.excerpt,
+          time: date ? date.toLocaleString("ru-RU") : "Дата неизвестна",
+          ageMinutes,
+          match: 0,
+          badge: meta?.mark ?? item.editor.slice(0, 1),
+          badgeClass: "bg-[#171717]",
+          platformLabel: platformMeta.label,
+          platformColor: platformMeta.color,
+        };
+      });
+  }, [apiJob, platformFilter, editorialFilter, dateOrder, period, editorialMeta, PLATFORM_META]);
 
   useEffect(() => {
     setVisibleLimit(10);
@@ -989,7 +1120,9 @@ export default function App() {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#d91f2e] opacity-40" />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#d91f2e]" />
                     </span>
-                    {visibleSources.length > 0 ? `Найдено ${visibleSources.length} публикаций` : "Публикаций по фильтрам не найдено"}
+                    {searching
+                      ? `Проверено источников: ${apiJob?.processed_sources ?? 0} из ${apiJob?.total_sources ?? 0}`
+                      : apiError || (visibleSources.length > 0 ? `Найдено ${visibleSources.length} публикаций` : "Публикаций по фильтрам не найдено")}
                   </div>
                   <h2 className="text-xl font-extrabold tracking-[-0.03em] sm:text-2xl">Об этом пишут</h2>
                 </div>

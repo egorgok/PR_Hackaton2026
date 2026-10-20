@@ -58,7 +58,7 @@ class SearchService:
         owner_id: str,
     ):
         keywords = extract_keywords(request.text)
-        if self.ai_client.enabled:
+        if selected and self.ai_client.enabled:
             try:
                 expanded = await self.ai_client.expand_query(request.text)
                 keywords = list(
@@ -102,6 +102,9 @@ class SearchService:
 
     async def _run(self, job_id: str, request: SearchRequest, selected, keywords: list[str]):
         await self.jobs.mutate(job_id, lambda job: job.update(status="running"))
+        if not selected:
+            await self.jobs.mutate(job_id, lambda job: job.update(status="completed"))
+            return
         semaphore = asyncio.Semaphore(self.settings.max_concurrent_sources)
         ai_semaphore = asyncio.Semaphore(3)
         social_sources = [
